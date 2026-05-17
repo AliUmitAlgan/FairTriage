@@ -1,5 +1,6 @@
 package com.fairtriage.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -54,11 +55,14 @@ class QueueScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { QueueScreenModel() }
         val state by screenModel.state.collectAsState()
+        val goToDashboard = { navigator.replace(DashboardScreen()) }
+
+        BackHandler(onBack = goToDashboard)
 
         Column(modifier = Modifier.fillMaxSize().background(FairColors.ScreenBg)) {
             FairTriageTopBar(
                 title = "Patient Queue",
-                onBack = { navigator.pop() }
+                onBack = goToDashboard
             )
 
             Column(
