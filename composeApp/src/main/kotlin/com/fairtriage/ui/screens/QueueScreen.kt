@@ -26,12 +26,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
@@ -53,11 +57,25 @@ class QueueScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val lifecycleOwner = LocalLifecycleOwner.current
         val screenModel = rememberScreenModel { QueueScreenModel() }
         val state by screenModel.state.collectAsState()
         val goToDashboard = { navigator.replace(DashboardScreen()) }
 
         BackHandler(onBack = goToDashboard)
+
+        DisposableEffect(lifecycleOwner, screenModel) {
+            screenModel.refresh()
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    screenModel.refresh()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
 
         Column(modifier = Modifier.fillMaxSize().background(FairColors.ScreenBg)) {
             FairTriageTopBar(

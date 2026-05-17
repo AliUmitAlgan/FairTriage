@@ -17,10 +17,6 @@ class QueueScreenModel(
     private val _state = MutableStateFlow<ScreenState<List<Patient>>>(ScreenState.Loading)
     val state: StateFlow<ScreenState<List<Patient>>> = _state.asStateFlow()
 
-    init {
-        refresh()
-    }
-
     fun refresh() {
         screenModelScope.launch {
             _state.value = ScreenState.Loading
