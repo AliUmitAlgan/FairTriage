@@ -8,20 +8,19 @@ import androidx.compose.ui.graphics.Color
 import com.fairtriage.ui.components.FairColors
 
 private val FairTriageColors: ColorScheme = lightColorScheme(
-    primary = FairColors.PrimaryBlue,
+    primary = FairColors.NavyDark,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFDCEBFF),
-    onPrimaryContainer = Color(0xFF09233F),
-    secondary = FairColors.SecondaryTeal,
+    primaryContainer = FairColors.InfoBlueBg,
+    onPrimaryContainer = FairColors.InfoBlueText,
+    secondary = FairColors.AccentBlue,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFBEEBE3),
-    onSecondaryContainer = Color(0xFF002E28),
-    tertiary = Color(0xFF7B1FA2),
-    error = FairColors.CriticalRed,
-    background = FairColors.Background,
+    secondaryContainer = FairColors.AccentBlueBg,
+    onSecondaryContainer = FairColors.AccentBlue,
+    error = FairColors.DangerRed,
+    background = FairColors.ScreenBg,
     surface = FairColors.Surface,
-    surfaceVariant = FairColors.Divider,
-    outline = FairColors.Divider
+    surfaceVariant = FairColors.Border,
+    outline = FairColors.Border
 )
 
 @Composable

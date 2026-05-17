@@ -1,11 +1,14 @@
 package com.fairtriage.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,14 +16,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,26 +57,28 @@ import com.fairtriage.core.ScreenState
 import com.fairtriage.model.Patient
 import com.fairtriage.screenmodel.PatientActionState
 import com.fairtriage.screenmodel.PatientDetailScreenModel
-import com.fairtriage.ui.components.AppBarStyle
-import com.fairtriage.ui.components.ClinicalCard
+import com.fairtriage.ui.components.DisclaimerText
 import com.fairtriage.ui.components.ErrorState
 import com.fairtriage.ui.components.FairColors
+import com.fairtriage.ui.components.FairTriageTopBar
+import com.fairtriage.ui.components.FairTypography
 import com.fairtriage.ui.components.LoadingState
-import com.fairtriage.ui.components.ScoreBreakdownCard
-import com.fairtriage.ui.components.ScreenScaffold
+import com.fairtriage.ui.components.SectionCardTitle
+import com.fairtriage.ui.components.StandardCard
 import com.fairtriage.ui.components.TriageBadge
-import com.fairtriage.ui.components.triageColor
+import com.fairtriage.ui.components.formatScore
+import com.fairtriage.ui.components.formatWaitFactor
+import com.fairtriage.ui.components.triageFill
 import com.fairtriage.ui.components.triageTint
 
 data class PatientDetailScreen(private val patientId: Int) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val snackbarHostState = remember { SnackbarHostState() }
         val screenModel = rememberScreenModel { PatientDetailScreenModel() }
         val state by screenModel.state.collectAsState()
         val actionState by screenModel.actionState.collectAsState()
-        val patientName = (state as? ScreenState.Success)?.data?.full_name ?: "Patient Detail"
+        val snackbarHostState = remember { SnackbarHostState() }
 
         LaunchedEffect(patientId) {
             screenModel.load(patientId)
@@ -76,19 +91,19 @@ data class PatientDetailScreen(private val patientId: Int) : Screen {
                     snackbarHostState.showSnackbar(currentAction.message)
                     screenModel.clearActionError()
                 }
-                PatientActionState.Idle,
-                PatientActionState.Loading -> Unit
+                else -> Unit
             }
         }
 
-        ScreenScaffold(
-            title = patientName,
-            showBack = true,
-            appBarStyle = AppBarStyle.White,
-            snackbarHostState = snackbarHostState
+        Scaffold(
+            topBar = {
+                FairTriageTopBar(title = "Patient Detail", onBack = { navigator.pop() })
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = FairColors.ScreenBg
         ) { paddingValues ->
             when (val currentState = state) {
-                ScreenState.Loading -> LoadingState(modifier = Modifier.padding(paddingValues))
+                is ScreenState.Loading -> LoadingState(modifier = Modifier.padding(paddingValues))
                 is ScreenState.Error -> ErrorState(
                     errorMessage = currentState.message,
                     onRetry = { screenModel.load(patientId) },
@@ -121,184 +136,228 @@ private fun PatientDetailContent(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(FairColors.Background)
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    val level = patient.triage_level ?: "Stable"
+    val accent = triageFill(level)
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        HeroCard(patient)
-        VitalSignsCard(patient)
-        ScoreBreakdownCard(patient = patient)
-        DecisionRationaleCard(patient)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            OutlinedButton(
-                onClick = onOverride,
-                modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(12.dp)
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FairColors.NavyDark)
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Override Decision", color = FairColors.PrimaryBlue, fontSize = 13.sp)
-            }
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.weight(1f).height(52.dp),
-                enabled = !completing,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = FairColors.SecondaryTeal,
-                    contentColor = Color.White
+                TriageBadge(level = level, large = true)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = patient.full_name, style = FairTypography.TitleLarge, color = FairColors.NavyText)
+
+                val chronicText = if (!patient.chronic_disease_description.isNullOrBlank()) {
+                    " - ${patient.chronic_disease_description}"
+                } else {
+                    ""
+                }
+                Text(
+                    text = "Queue #${patient.queue_position ?: "-"} - Age ${patient.age} - ${patient.gender}$chronicText",
+                    style = FairTypography.LabelSmall,
+                    color = Color(0x7394D2EC),
+                    modifier = Modifier.padding(top = 5.dp),
+                    textAlign = TextAlign.Center
                 )
+
+                if (patient.overridden_by_doctor) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0x337C3AED), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("Doctor override applied", fontSize = 10.sp, color = Color(0xFFA78BFA))
+                    }
+                }
+            }
+        }
+
+        item {
+            Column(
+                modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (completing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp).padding(end = 4.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
+                StandardCard {
+                    SectionCardTitle("Vital signs", Icons.Default.Favorite)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        VitalItem("Heart rate", "${patient.heart_rate} bpm", patient.heart_rate > 100, Modifier.weight(1f))
+                        VitalItem(
+                            "Blood pressure",
+                            "${patient.blood_pressure_systolic}/${patient.blood_pressure_diastolic}",
+                            patient.blood_pressure_systolic !in 90..140,
+                            Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        VitalItem("Pain level", "${patient.pain_level}/10", patient.pain_level >= 7, Modifier.weight(1f))
+                        VitalItem("Fever", if (patient.fever) "Yes" else "No", patient.fever, Modifier.weight(1f))
+                    }
                 }
-                Text("Mark as Completed", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
 
-@Composable
-private fun HeroCard(patient: Patient) {
-    ClinicalCard(containerColor = triageTint(patient.triage_level)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            TriageBadge(level = patient.triage_level)
-            Text(
-                text = patient.full_name,
-                color = FairColors.TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Text(
-                text = "Queue Position #${patient.queue_position ?: "-"}",
-                color = FairColors.TextSecondary,
-                fontSize = 12.sp
-            )
-            if (patient.overridden_by_doctor) {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .background(Color(0xFF6A1B9A), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "Doctor Override Applied",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
+                StandardCard {
+                    SectionCardTitle("AI risk analysis", Icons.Default.Psychology)
+
+                    ScoreRow("Symptom score", formatScore(patient.symptom_score))
+                    SoftDivider()
+                    ScoreRow("Image score", formatScore(patient.image_score))
+                    SoftDivider()
+                    ScoreRow("History score", formatScore(patient.history_score))
+                    SoftDivider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Clinical risk score", style = FairTypography.BodyLarge)
+                        Text(formatScore(patient.clinical_risk_score), style = FairTypography.ScoreBig, color = accent)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { ((patient.clinical_risk_score ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = accent,
+                        trackColor = triageTint(level),
+                        drawStopIndicator = {}
                     )
+                    SoftDivider()
+
+                    ScoreRow("Waiting time factor", formatWaitFactor(patient.waiting_time_factor))
+                    SoftDivider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Final priority score", style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium))
+                        Text(formatScore(patient.final_priority_score), style = FairTypography.ScoreFinal, color = accent)
+                    }
                 }
+
+                DecisionRationaleCard(patient)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = onOverride,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = FairColors.Surface,
+                            contentColor = FairColors.TextSecondary
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Override", style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium))
+                    }
+
+                    Button(
+                        onClick = onComplete,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = !completing,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = FairColors.ActionTeal, contentColor = Color.White)
+                    ) {
+                        if (completing) {
+                            CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp).padding(end = 4.dp))
+                        } else {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Mark completed", style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium))
+                    }
+                }
+
+                DisclaimerText()
             }
-        }
-    }
-}
-
-@Composable
-private fun VitalSignsCard(patient: Patient) {
-    ClinicalCard {
-        Text(
-            text = "VITAL SIGNS",
-            color = FairColors.TextPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            VitalItem("HR", "${patient.heart_rate}", "Heart Rate", patient.heart_rate > 100, Modifier.weight(1f))
-            VitalItem("BP", "${patient.blood_pressure_systolic}/${patient.blood_pressure_diastolic}", "Blood Pressure", patient.blood_pressure_systolic < 90 || patient.blood_pressure_systolic > 160, Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            VitalItem("P", patient.pain_level.toString(), "Pain Level", patient.pain_level >= 7, Modifier.weight(1f))
-            VitalItem("F", if (patient.fever) "Yes" else "No", "Fever", patient.fever, Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun VitalItem(
-    icon: String,
-    value: String,
-    label: String,
-    abnormal: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val color = if (abnormal) FairColors.CriticalRed else FairColors.SecondaryTeal
-    Row(
-        modifier = modifier
-            .background(FairColors.Background, RoundedCornerShape(10.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .background(color, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(icon, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-        Column {
-            Text(value, color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(label, color = FairColors.TextSecondary, fontSize = 12.sp)
         }
     }
 }
 
 @Composable
 private fun DecisionRationaleCard(patient: Patient) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .height(IntrinsicSize.Min)
-            .background(Color(0xFFE3F2FD), RoundedCornerShape(12.dp))
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = FairColors.InfoBlueBg),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, FairColors.InfoBlueBorder)
     ) {
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(FairColors.PrimaryBlue)
-        )
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("i", color = FairColors.PrimaryBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Box(modifier = Modifier.width(4.dp).fillMaxHeight().background(FairColors.InfoBlueText))
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = FairColors.InfoBlueText, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        "AI DECISION RATIONALE",
+                        style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = FairColors.InfoBlueText
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "AI Decision Rationale",
-                    color = FairColors.TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    text = patient.decision_rationale ?: "No rationale provided.",
+                    fontSize = 12.sp,
+                    color = FairColors.InfoBlueDark,
+                    fontStyle = FontStyle.Italic,
+                    lineHeight = 18.sp
                 )
-            }
-            Text(
-                text = patient.decision_rationale ?: "No rationale returned by backend.",
-                color = FairColors.TextPrimary,
-                fontSize = 14.sp,
-                fontStyle = FontStyle.Italic
-            )
-            if (patient.overridden_by_doctor && patient.doctor_override_reason != null) {
-                Text(
-                    text = "Doctor Override Reason: ${patient.doctor_override_reason}",
-                    color = Color(0xFF6A1B9A),
-                    fontSize = 14.sp,
-                    fontStyle = FontStyle.Italic
-                )
+
+                if (patient.overridden_by_doctor && !patient.doctor_override_reason.isNullOrEmpty()) {
+                    HorizontalDivider(color = FairColors.InfoBlueBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        text = "Doctor override reason: ${patient.doctor_override_reason}",
+                        fontSize = 12.sp,
+                        color = FairColors.PurpleBadge,
+                        fontStyle = FontStyle.Italic
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ScoreRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = FairTypography.BodyLarge)
+        Text(value, style = FairTypography.ScoreNormal, color = FairColors.TextPrimary)
+    }
+}
+
+@Composable
+private fun SoftDivider() {
+    HorizontalDivider(color = FairColors.Divider, thickness = 0.5.dp, modifier = Modifier.padding(vertical = 8.dp))
+}
+
+@Composable
+private fun VitalItem(label: String, value: String, abnormal: Boolean, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .background(FairColors.ScreenBg, RoundedCornerShape(10.dp))
+            .border(0.5.dp, FairColors.Border, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Text(label, style = FairTypography.Caption, color = FairColors.TextHint)
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (abnormal) FairColors.DangerRed else FairColors.TextPrimary
+        )
     }
 }

@@ -9,17 +9,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fairtriage.core.DISCLAIMER
 
 @Composable
-fun DisclaimerText(modifier: Modifier = Modifier) {
+fun DisclaimerText() {
     Text(
-        text = DISCLAIMER,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp, top = 4.dp),
-        color = Color(0xFF90A4AE),
+        text = "Prototype only. Not for real medical diagnosis.",
+        fontSize = 10.sp,
+        color = Color(0xFFCBD5E1),
         textAlign = TextAlign.Center,
-        fontSize = 11.sp
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp, top = 4.dp)
     )
 }

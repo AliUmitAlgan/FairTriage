@@ -1,29 +1,20 @@
 package com.fairtriage.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,188 +25,190 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.fairtriage.core.ScreenState
 import com.fairtriage.model.Patient
 import com.fairtriage.screenmodel.DashboardScreenModel
-import com.fairtriage.ui.components.AppBarStyle
-import com.fairtriage.ui.components.DashboardStatCard
-import com.fairtriage.ui.components.EmptyState
-import com.fairtriage.ui.components.ErrorState
-import com.fairtriage.ui.components.FairColors
-import com.fairtriage.ui.components.LoadingState
-import com.fairtriage.ui.components.ScreenScaffold
+import com.fairtriage.ui.components.*
 
 class DashboardScreen : Screen {
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { DashboardScreenModel() }
         val state by screenModel.state.collectAsState()
 
-        ScreenScaffold(
-            title = "FairTriage",
-            subtitle = "Emergency Dashboard",
-            appBarStyle = AppBarStyle.Blue
+        Scaffold(
+            topBar = {
+                FairTriageTopBar(
+                    title = "FairTriage",
+                    subtitle = "Emergency Dashboard - live hospital queue",
+                    actions = {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(FairColors.SuccessGreen, CircleShape)
+                                .align(Alignment.CenterVertically)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = Color(0x99FFFFFF)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                    }
+                )
+            },
+            containerColor = FairColors.ScreenBg
         ) { paddingValues ->
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                when (val currentState = state) {
-                    ScreenState.Loading -> LoadingState(modifier = Modifier.fillMaxWidth().height(240.dp))
-                    is ScreenState.Error -> ErrorState(
-                        errorMessage = currentState.message,
-                        onRetry = screenModel::refresh,
-                        modifier = Modifier.fillMaxWidth().height(240.dp)
-                    )
-                    is ScreenState.Success -> {
-                        if (currentState.data.isEmpty()) {
-                            EmptyState(
-                                icon = "+",
-                                title = "No patients yet",
-                                hint = "Add a patient or seed demo data.",
-                                modifier = Modifier.fillMaxWidth().height(240.dp)
-                            )
-                        } else {
-                            DashboardStats(currentState.data)
+                item {
+                    // WELCOME STRIP
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = FairColors.NavyDark)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Emergency department overview", style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium), color = FairColors.NavyText)
+                                val patientCount = if (state is ScreenState.Success) (state as ScreenState.Success).data.size else 0
+                                Text("$patientCount patients - last sync just now", style = FairTypography.LabelSmall, color = Color(0x8094D2EC))
+                            }
+                            Box(modifier = Modifier.size(10.dp).background(FairColors.SuccessGreen, CircleShape))
                         }
                     }
                 }
 
-                Text(
-                    text = "Quick Actions",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                    color = FairColors.TextSecondary,
-                    fontSize = 14.sp
-                )
+                item {
+                    when (val currentState = state) {
+                        is ScreenState.Loading -> LoadingState(modifier = Modifier.fillMaxWidth().height(240.dp))
+                        is ScreenState.Error -> ErrorState(
+                            errorMessage = currentState.message,
+                            onRetry = screenModel::refresh,
+                            modifier = Modifier.fillMaxWidth().height(240.dp)
+                        )
+                        is ScreenState.Success -> {
+                            val patients = currentState.data
+                            val criticalCount = patients.count { it.triage_level.equals("Critical", ignoreCase = true) }
+                            val urgentCount = patients.count { it.triage_level.equals("Urgent", ignoreCase = true) }
+                            val stableCount = patients.count { it.triage_level.equals("Stable", ignoreCase = true) }
 
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    QuickActionCard(
-                        text = "Add New Patient",
-                        icon = "+",
-                        subtitle = "Register new arrival",
-                        color = FairColors.PrimaryBlue,
-                        onClick = { navigator.push(AddPatientScreen()) }
-                    )
-                    QuickActionCard(
-                        text = "Patient Queue",
-                        icon = "#",
-                        subtitle = "View prioritized list",
-                        color = FairColors.PrimaryBlue,
-                        onClick = { navigator.push(QueueScreen()) }
-                    )
-                    QuickActionCard(
-                        text = "Decision Logs",
-                        icon = "H",
-                        subtitle = "AI action history",
-                        color = FairColors.PrimaryBlue,
-                        onClick = { navigator.push(LogsScreen()) }
-                    )
-                    QuickActionCard(
-                        text = "Seed Demo Data",
-                        icon = ">",
-                        subtitle = "Load demo patients",
-                        color = FairColors.SecondaryTeal,
-                        onClick = screenModel::seedDemoData
-                    )
-                    QuickActionCard(
-                        text = "Reset All Data",
-                        icon = "X",
-                        subtitle = "Clear all patients and logs",
-                        color = FairColors.CriticalRed,
-                        onClick = screenModel::resetAll
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    StatCard(title = "Total Patients", value = patients.size, color = FairColors.InfoBlueText, icon = Icons.Default.Group, modifier = Modifier.weight(1f))
+                                    StatCard(title = "Critical", value = criticalCount, color = FairColors.CriticalFill, icon = Icons.Default.Warning, modifier = Modifier.weight(1f))
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    StatCard(title = "Urgent", value = urgentCount, color = FairColors.UrgentFill, icon = Icons.Default.Schedule, modifier = Modifier.weight(1f))
+                                    StatCard(title = "Stable", value = stableCount, color = FairColors.StableFill, icon = Icons.Default.CheckCircle, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        text = "Quick actions",
+                        style = FairTypography.LabelLarge,
+                        color = Color(0xFF64748B)
                     )
                 }
+
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ActionCard(
+                            title = "Patient Queue",
+                            subtitle = "View prioritized patient list",
+                            icon = Icons.Default.FormatListNumbered,
+                            iconBg = FairColors.InfoBlueBg,
+                            iconTint = FairColors.InfoBlueText,
+                            onClick = { navigator.push(QueueScreen()) }
+                        )
+                        ActionCard(
+                            title = "Add new patient",
+                            subtitle = "Enter symptoms & vitals",
+                            icon = Icons.Default.PersonAdd,
+                            iconBg = FairColors.InfoBlueBg,
+                            iconTint = FairColors.InfoBlueText,
+                            onClick = { navigator.push(AddPatientScreen()) }
+                        )
+                        ActionCard(
+                            title = "Decision logs",
+                            subtitle = "Audit trail & overrides",
+                            icon = Icons.Default.History,
+                            iconBg = Color(0xFFF1F5F9),
+                            iconTint = Color(0xFF475569),
+                            onClick = { navigator.push(LogsScreen()) }
+                        )
+                    }
+                }
+
+                item { DisclaimerText() }
             }
         }
     }
-}
 
-@Composable
-private fun DashboardStats(patients: List<Patient>) {
-    val criticalCount = patients.count { it.triage_level.equals("Critical", ignoreCase = true) }
-    val urgentCount = patients.count { it.triage_level.equals("Urgent", ignoreCase = true) }
-    val stableCount = patients.count { it.triage_level.equals("Stable", ignoreCase = true) }
-
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DashboardStatCard(
-                title = "Total Patients",
-                value = patients.size,
-                accentColor = FairColors.PrimaryBlue,
-                icon = "P",
-                modifier = Modifier.weight(1f)
-            )
-            DashboardStatCard(
-                title = "Critical",
-                value = criticalCount,
-                accentColor = FairColors.CriticalRed,
-                icon = "!",
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DashboardStatCard(
-                title = "Urgent",
-                value = urgentCount,
-                accentColor = FairColors.UrgentOrange,
-                icon = "T",
-                modifier = Modifier.weight(1f)
-            )
-            DashboardStatCard(
-                title = "Stable",
-                value = stableCount,
-                accentColor = FairColors.StableGreen,
-                icon = "OK",
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun QuickActionCard(
-    text: String,
-    icon: String,
-    subtitle: String,
-    color: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = FairColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    @Composable
+    private fun StatCard(title: String, value: Int, color: Color, icon: ImageVector, modifier: Modifier = Modifier) {
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = FairColors.Surface),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, FairColors.Border)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(26.dp)
-                    .background(color.copy(alpha = 0.10f), RoundedCornerShape(7.dp)),
-                contentAlignment = Alignment.Center
+            Column(modifier = Modifier.padding(14.dp)) {
+                Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = value.toString(), style = FairTypography.StatNumber, color = color)
+                Text(text = title, style = FairTypography.LabelSmall, color = Color(0xFF64748B))
+            }
+        }
+    }
+
+    @Composable
+    private fun ActionCard(
+        title: String,
+        subtitle: String,
+        icon: ImageVector,
+        iconBg: Color,
+        iconTint: Color,
+        border: Color = FairColors.Border,
+        titleColor: Color = FairColors.TextPrimary,
+        onClick: () -> Unit
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = FairColors.Surface),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, border)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(icon, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier.size(36.dp).background(iconBg, RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = title, style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium), color = titleColor)
+                    Text(text = subtitle, style = FairTypography.BodyMedium.copy(fontSize = 12.sp), color = FairColors.TextSecondary)
+                }
+                Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFFCBD5E1))
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text, color = color, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = FairColors.TextSecondary, fontSize = 12.sp)
-            }
-            Text(">", color = FairColors.TextSecondary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

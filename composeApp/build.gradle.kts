@@ -7,8 +7,6 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-layout.buildDirectory.set(rootProject.layout.projectDirectory.dir("androidApp/build"))
-
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -57,6 +55,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.compose.components.resources)
+    implementation(libs.compose.materialIconsExtended)
     implementation(libs.compose.uiToolingPreview)
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")

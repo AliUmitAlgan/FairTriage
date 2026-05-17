@@ -32,5 +32,4 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include(":androidApp")
-project(":androidApp").projectDir = file("composeApp")
+include(":composeApp")

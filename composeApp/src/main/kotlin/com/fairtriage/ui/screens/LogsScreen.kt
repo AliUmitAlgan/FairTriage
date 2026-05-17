@@ -1,227 +1,186 @@
 package com.fairtriage.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import com.fairtriage.core.ScreenState
 import com.fairtriage.model.DecisionLog
 import com.fairtriage.screenmodel.LogsScreenModel
-import com.fairtriage.ui.components.ActionTypeChip
-import com.fairtriage.ui.components.AppBarStyle
-import com.fairtriage.ui.components.EmptyState
-import com.fairtriage.ui.components.ErrorState
-import com.fairtriage.ui.components.FairColors
-import com.fairtriage.ui.components.LoadingState
-import com.fairtriage.ui.components.ScreenScaffold
-import com.fairtriage.ui.components.actionColor
-import com.fairtriage.ui.components.formatCreatedAt
+import com.fairtriage.ui.components.*
 
 class LogsScreen : Screen {
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { LogsScreenModel() }
         val state by screenModel.state.collectAsState()
         var selectedFilter by remember { mutableStateOf("All") }
+        val filters = listOf("All", "Override", "Created", "Score", "Completed")
 
-        ScreenScaffold(
-            title = "Decision Logs",
-            showBack = true,
-            appBarStyle = AppBarStyle.Blue
+        Scaffold(
+            topBar = {
+                FairTriageTopBar(
+                    title = "Decision logs",
+                    subtitle = "Full audit trail - clinical review",
+                    onBack = { navigator.pop() }
+                )
+            },
+            containerColor = FairColors.ScreenBg
         ) { paddingValues ->
-            when (val currentState = state) {
-                ScreenState.Loading -> LoadingState(modifier = Modifier.padding(paddingValues))
-                is ScreenState.Error -> ErrorState(
-                    errorMessage = currentState.message,
-                    onRetry = screenModel::refresh,
-                    modifier = Modifier.padding(paddingValues)
-                )
-                is ScreenState.Success -> LogsContent(
-                    logs = currentState.data,
-                    selectedFilter = selectedFilter,
-                    onFilterSelected = { selectedFilter = it },
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LogsContent(
-    logs: List<DecisionLog>,
-    selectedFilter: String,
-    onFilterSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val filteredLogs = logs.filter { log ->
-        when (selectedFilter) {
-            "Created" -> log.action_type == "created"
-            "Score" -> log.action_type == "score_calculated"
-            "Override" -> log.action_type == "doctor_override"
-            "Completed" -> log.action_type == "completed"
-            else -> true
-        }
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(FairColors.Background)
-    ) {
-        FilterRow(selectedFilter = selectedFilter, onFilterSelected = onFilterSelected)
-        if (filteredLogs.isEmpty()) {
-            EmptyState(
-                icon = "L",
-                title = "No decision logs yet",
-                hint = "Clinical actions will appear here.",
-                modifier = Modifier.weight(1f)
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(filteredLogs, key = { log -> log.id }) { log ->
-                    DecisionLogCard(log = log)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FilterRow(
-    selectedFilter: String,
-    onFilterSelected: (String) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf("All", "Created", "Score", "Override", "Completed").forEach { filter ->
-            val selected = selectedFilter == filter
-            Surface(
-                modifier = Modifier.clickable { onFilterSelected(filter) },
-                shape = RoundedCornerShape(20.dp),
-                color = if (selected) FairColors.PrimaryBlue else FairColors.Surface
-            ) {
-                Text(
-                    text = filter,
-                    color = if (selected) Color.White else FairColors.TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DecisionLogCard(log: DecisionLog) {
-    var expanded by remember { mutableStateOf(false) }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable { expanded = !expanded },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = FairColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 6.dp)
-                    .size(8.dp)
-                    .background(actionColor(log.action_type), CircleShape)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                // FILTER CHIPS
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().background(FairColors.Surface),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
                 ) {
-                    ActionTypeChip(actionType = log.action_type)
-                    Text(
-                        text = "Patient #${log.patient_id}",
-                        color = FairColors.TextSecondary.copy(alpha = 0.72f),
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.End
-                    )
+                    items(filters) { filter ->
+                        val isSelected = filter == selectedFilter
+                        val bgColor = if (isSelected) FairColors.NavyDark else FairColors.Surface
+                        val textColor = if (isSelected) Color.White else Color(0xFF64748B)
+                        val borderColor = if (isSelected) FairColors.NavyDark else FairColors.Border
+                        
+                        Box(
+                            modifier = Modifier
+                                .clickable { selectedFilter = filter }
+                                .background(bgColor, RoundedCornerShape(20.dp))
+                                .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                                .padding(horizontal = 13.dp, vertical = 5.dp)
+                        ) {
+                            Text(filter, color = textColor, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
                 }
-                if (
-                    log.old_triage_level != null &&
-                    log.new_triage_level != null &&
-                    log.old_triage_level != log.new_triage_level
-                ) {
-                    Text(
-                        text = "${log.old_triage_level} -> ${log.new_triage_level}",
-                        color = actionColor(log.action_type),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                HorizontalDivider(color = FairColors.Border, thickness = 0.5.dp)
+
+                // LOG CARDS
+                Box(modifier = Modifier.weight(1f)) {
+                    when (val currentState = state) {
+                        is ScreenState.Loading -> LoadingState()
+                        is ScreenState.Error -> ErrorState(currentState.message, onRetry = screenModel::refresh)
+                        is ScreenState.Success -> {
+                            val logs = currentState.data.filter { 
+                                selectedFilter == "All" || it.action_type.contains(selectedFilter, ignoreCase = true) 
+                            }
+                            if (logs.isEmpty()) {
+                                EmptyState(icon = "Inbox", title = "No logs found", hint = "Try changing the filter.")
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(logs, key = { it.id }) { log ->
+                                        LogCard(log)
+                                    }
+                                    item { DisclaimerText() }
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun LogCard(log: DecisionLog) {
+        val (chipBg, chipText) = when (log.action_type) {
+            "doctor_override" -> FairColors.PurpleBg to FairColors.PurpleBadge
+            "created" -> FairColors.InfoBlueBg to FairColors.InfoBlueText
+            "completed" -> Color(0xFFF1F5F9) to Color(0xFF475569)
+            "score_calculated" -> Color(0xFFF0FDFA) to FairColors.ActionTeal
+            "queue_updated" -> FairColors.UrgentTint to FairColors.UrgentFill
+            else -> FairColors.Surface to FairColors.TextPrimary
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = FairColors.Surface),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, FairColors.Border)
+        ) {
+            Column(modifier = Modifier.padding(13.dp, 14.dp)) {
+                // TOP ROW
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.background(chipBg, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text(log.action_type, color = chipText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text("Patient #${log.patient_id}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // TRIAGE CHANGE ROW
+                if (log.old_triage_level != log.new_triage_level && log.old_triage_level != null && log.new_triage_level != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(log.old_triage_level, color = FairColors.DangerRed, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(14.dp).padding(horizontal = 4.dp))
+                        Text(log.new_triage_level, color = FairColors.StableFill, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                // EXPLANATION
                 Text(
                     text = log.explanation,
-                    color = FairColors.TextPrimary,
-                    fontSize = 14.sp,
-                    maxLines = if (expanded) Int.MAX_VALUE else 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = Color(0xFF475569),
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    maxLines = 2
                 )
-                if (!expanded && log.explanation.length > 90) {
-                    Text("Show more", color = FairColors.PrimaryBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Text(
-                        text = formatCreatedAt(log.created_at),
-                        color = FairColors.TextSecondary,
-                        fontSize = 11.sp
-                    )
-                }
+
+                // TIMESTAMP
+                Text(
+                    text = formatTimestamp(log.created_at),
+                    color = Color(0xFFCBD5E1),
+                    fontSize = 10.sp,
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+                    textAlign = TextAlign.End
+                )
             }
         }
+    }
+
+    private fun formatTimestamp(ts: String): String {
+        // "2024-05-17T14:30:00" -> "17 May 2024 - 14:30"
+        // Best effort simple string parsing
+        try {
+            val parts = ts.split("T")
+            if (parts.size == 2) {
+                val dateParts = parts[0].split("-")
+                val timePart = parts[1].take(5) // HH:mm
+                if (dateParts.size == 3) {
+                    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                    val monthIdx = dateParts[1].toIntOrNull()?.minus(1) ?: 0
+                    val month = months.getOrElse(monthIdx) { "Unk" }
+                    return "${dateParts[2]} $month ${dateParts[0]} - $timePart"
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+        return ts
     }
 }

@@ -1,245 +1,179 @@
 package com.fairtriage.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.fairtriage.model.OverrideRequest
 import com.fairtriage.screenmodel.OverrideDecisionScreenModel
 import com.fairtriage.screenmodel.SubmitState
-import com.fairtriage.ui.components.AppBarStyle
-import com.fairtriage.ui.components.ClinicalCard
-import com.fairtriage.ui.components.FairColors
-import com.fairtriage.ui.components.ScreenScaffold
-import com.fairtriage.ui.components.SelectableOptionCard
-import com.fairtriage.ui.components.TriageBadge
-import com.fairtriage.ui.components.triageColor
-import kotlinx.coroutines.delay
+import com.fairtriage.ui.components.*
 
 data class OverrideDecisionScreen(
     private val patientId: Int,
     private val currentTriageLevel: String
 ) : Screen {
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val snackbarHostState = remember { SnackbarHostState() }
         val screenModel = rememberScreenModel { OverrideDecisionScreenModel() }
-        val submitState by screenModel.submitState.collectAsState()
-        val options = listOf("Critical", "Urgent", "Stable")
-        var selectedLevel by remember { mutableStateOf(currentTriageLevel.takeIf { it in options } ?: "Stable") }
-        var reason by remember { mutableStateOf("") }
-        var showReasonError by remember { mutableStateOf(false) }
-        var successVisible by remember { mutableStateOf(false) }
-        val reasonError = showReasonError && reason.isBlank()
-        val isSubmitting = submitState == SubmitState.Loading
+        val actionState by screenModel.submitState.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
 
-        LaunchedEffect(submitState) {
-            when (val state = submitState) {
+        var selectedLevel by remember { mutableStateOf(currentTriageLevel.ifBlank { "Stable" }) }
+        var reason by remember { mutableStateOf("") }
+        var showErrors by remember { mutableStateOf(false) }
+
+        LaunchedEffect(actionState) {
+            when (val currentAction = actionState) {
                 SubmitState.Success -> {
-                    successVisible = true
-                    delay(700)
-                    navigator.replace(PatientDetailScreen(patientId))
+                    snackbarHostState.showSnackbar("Override applied")
+                    navigator.pop()
                 }
                 is SubmitState.Error -> {
-                    snackbarHostState.showSnackbar(state.message)
+                    snackbarHostState.showSnackbar(currentAction.message)
                     screenModel.clearError()
                 }
-                SubmitState.Idle,
-                SubmitState.Loading -> Unit
+                else -> Unit
             }
         }
 
-        ScreenScaffold(
-            title = "Override Decision",
-            showBack = true,
-            appBarStyle = AppBarStyle.White,
-            snackbarHostState = snackbarHostState
+        Scaffold(
+            topBar = {
+                FairTriageTopBar(title = "Override decision", onBack = { navigator.pop() })
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = FairColors.ScreenBg
         ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(FairColors.Background)
+            Column(
+                modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                // WARNING CARD
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = FairColors.WarningBg),
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFFEF08A))
                 ) {
-                    ClinicalCard(containerColor = Color(0xFFFFF8E1)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("!", color = FairColors.UrgentOrange, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        Box(modifier = Modifier.width(3.dp).fillMaxHeight().background(FairColors.WarningBorder))
+                        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = FairColors.WarningBorder, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text(
-                                    text = "You are about to override an AI decision",
-                                    color = FairColors.TextPrimary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "This action will be logged for audit purposes.",
-                                    color = FairColors.TextSecondary,
-                                    fontSize = 12.sp
-                                )
+                                Text("You are overriding an AI decision", style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium), color = FairColors.WarningText)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("This action will be logged for compliance and audit.", style = FairTypography.LabelSmall, color = Color(0xFFA16207))
                             }
                         }
-                    }
-
-                    ClinicalCard {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            Text("Current triage level", color = FairColors.TextSecondary, fontSize = 12.sp)
-                            Box(modifier = Modifier.padding(top = 8.dp)) {
-                                TriageBadge(level = currentTriageLevel)
-                            }
-                        }
-                    }
-
-                    ClinicalCard {
-                        Text(
-                            text = "New Triage Level",
-                            color = FairColors.TextSecondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            options.forEach { option ->
-                                SelectableOptionCard(
-                                    text = option,
-                                    selected = selectedLevel == option,
-                                    color = triageColor(option),
-                                    onClick = { selectedLevel = option },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-
-                    ClinicalCard {
-                        OutlinedTextField(
-                            value = reason,
-                            onValueChange = { reason = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Clinical Override Reason") },
-                            isError = reasonError,
-                            minLines = 3,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = FairColors.PrimaryBlue,
-                                focusedLabelColor = FairColors.PrimaryBlue,
-                                cursorColor = FairColors.PrimaryBlue,
-                                errorBorderColor = FairColors.CriticalRed,
-                                errorLabelColor = FairColors.CriticalRed
-                            )
-                        )
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(
-                                text = if (reasonError) "Clinical override reason is required." else "",
-                                color = FairColors.CriticalRed,
-                                fontSize = 12.sp
-                            )
-                            Text("${reason.length}/1000", color = FairColors.TextSecondary, fontSize = 12.sp)
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            showReasonError = true
-                            if (reason.isNotBlank()) {
-                                screenModel.submit(
-                                    patientId = patientId,
-                                    request = OverrideRequest(
-                                        new_triage_level = selectedLevel,
-                                        override_reason = reason.trim()
-                                    )
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(56.dp),
-                        enabled = reason.isNotBlank() && !isSubmitting,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = FairColors.CriticalRed,
-                            contentColor = Color.White,
-                            disabledContainerColor = Color(0xFFB0BEC5),
-                            disabledContentColor = Color.White
-                        )
-                    ) {
-                        if (isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.padding(end = 8.dp).size(18.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                        Text("Confirm Override", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                if (successVisible) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White.copy(alpha = 0.88f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .background(FairColors.StableGreen, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("OK", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                            }
-                            Text(
-                                text = "Override saved",
-                                modifier = Modifier.padding(top = 12.dp),
-                                color = FairColors.TextPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Current triage level", style = FairTypography.LabelLarge, color = Color(0xFF64748B), modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TriageBadge(level = currentTriageLevel, large = true)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Select new triage level", style = FairTypography.LabelLarge, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 10.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    LevelSelectorCard("Critical", selectedLevel, FairColors.CriticalFill, Modifier.weight(1f)) { selectedLevel = "Critical" }
+                    LevelSelectorCard("Urgent", selectedLevel, FairColors.UrgentFill, Modifier.weight(1f)) { selectedLevel = "Urgent" }
+                    LevelSelectorCard("Stable", selectedLevel, FairColors.StableFill, Modifier.weight(1f)) { selectedLevel = "Stable" }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Clinical override reason (required)", style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium), color = FairColors.TextSecondary)
+                Spacer(modifier = Modifier.height(4.dp))
+                val isReasonError = showErrors && reason.isBlank()
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    isError = isReasonError,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = FairColors.ScreenBg,
+                        unfocusedContainerColor = FairColors.ScreenBg,
+                        focusedBorderColor = FairColors.Border,
+                        unfocusedBorderColor = FairColors.Border,
+                        errorBorderColor = FairColors.DangerRed
+                    )
+                )
+                if (isReasonError) {
+                    Text("Reason is required", color = FairColors.DangerRed, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                val isConfirmEnabled = selectedLevel.isNotEmpty() && reason.isNotBlank()
+                Button(
+                    onClick = {
+                        showErrors = true
+                        if (isConfirmEnabled) {
+                            screenModel.submit(patientId, com.fairtriage.model.OverrideRequest(new_triage_level = selectedLevel, override_reason = reason))
                         }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isConfirmEnabled) FairColors.DangerRed else FairColors.Border,
+                        contentColor = if (isConfirmEnabled) Color.White else FairColors.TextHint
+                    )
+                ) {
+                    if (actionState == SubmitState.Loading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                    } else {
+                        Text("Confirm override", style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium))
                     }
                 }
+                
+                DisclaimerText()
+            }
+        }
+    }
+
+    @Composable
+    private fun LevelSelectorCard(level: String, selectedLevel: String, fillColor: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+        val isSelected = level == selectedLevel
+        Box(
+            modifier = modifier
+                .clickable(onClick = onClick)
+                .background(if (isSelected) fillColor else Color.White, RoundedCornerShape(12.dp))
+                .border(1.dp, if (isSelected) fillColor else FairColors.Border, RoundedCornerShape(12.dp))
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(level, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                }
+            } else {
+                Text(level, color = Color(0xFF64748B), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

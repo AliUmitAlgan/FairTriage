@@ -1,29 +1,27 @@
 package com.fairtriage.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.fairtriage.core.DISCLAIMER
+import com.fairtriage.ui.components.DisclaimerText
 import com.fairtriage.ui.components.FairColors
+import com.fairtriage.ui.components.FairTypography
 import kotlinx.coroutines.delay
 
 class SplashScreen : Screen {
@@ -39,47 +37,93 @@ class SplashScreen : Screen {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(FairColors.PrimaryBlue)
-                .padding(24.dp)
+                .background(FairColors.NavyDark)
         ) {
             Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "+",
-                    color = Color.White,
-                    fontSize = 72.sp,
-                    fontWeight = FontWeight.Black
-                )
+                Spacer(modifier = Modifier.weight(1f))
+                
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .background(FairColors.AccentBlueBg, RoundedCornerShape(24.dp))
+                        .border(1.dp, FairColors.AccentBlueBrd, RoundedCornerShape(24.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MonitorHeart,
+                        contentDescription = "Logo",
+                        tint = FairColors.AccentBlue,
+                        modifier = Modifier.size(38.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Text(
                     text = "FairTriage",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center
+                    style = FairTypography.DisplayLarge,
+                    color = FairColors.NavyText,
+                    letterSpacing = (-1).sp
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
-                    text = "AI-Powered Fair Clinical Queue",
-                    color = Color.White.copy(alpha = 0.70f),
-                    fontSize = 14.sp,
+                    text = "AI-Powered Fair Clinical\nPatient Queue System",
+                    style = FairTypography.BodyMedium,
+                    color = Color(0x8C94D2EC), // rgba(148,210,236,0.55)
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(32.dp))
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0x1A38BDF8), // rgba(56,189,248,0.10)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x3338BDF8))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = FairColors.AccentBlue,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Edge AI · Privacy First",
+                            fontSize = 11.sp,
+                            color = FairColors.AccentBlue
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
                 CircularProgressIndicator(
-                    color = Color.White,
-                    strokeWidth = 2.dp
+                    color = FairColors.AccentBlue,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
-            Text(
-                text = DISCLAIMER,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                color = Color.White.copy(alpha = 0.50f),
-                fontSize = 11.sp,
-                textAlign = TextAlign.Center
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
+            ) {
+                // To apply opacity to DisclaimerText, wrapping in CompositionLocalProvider could work
+                // But simple way is it defaults to CBD5E1. We will use a wrapper if we need it specifically dim
+                DisclaimerText()
+            }
         }
     }
 }
