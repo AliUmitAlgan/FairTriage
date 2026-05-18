@@ -84,7 +84,7 @@ data class OverrideDecisionScreen(
 
         LaunchedEffect(actionState) {
             when (val currentAction = actionState) {
-                SubmitState.Success -> navigator.pop()
+                is SubmitState.Success -> navigator.pop()
                 is SubmitState.Error -> {
                     snackbarHostState.showSnackbar(currentAction.message)
                     screenModel.clearError()

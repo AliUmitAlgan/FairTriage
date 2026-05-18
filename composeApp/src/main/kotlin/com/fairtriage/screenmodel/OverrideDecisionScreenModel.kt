@@ -21,7 +21,7 @@ class OverrideDecisionScreenModel(
         screenModelScope.launch {
             try {
                 patientRepository.overridePatient(patientId, request)
-                _submitState.value = SubmitState.Success
+                _submitState.value = SubmitState.Success(patientId)
             } catch (e: Throwable) {
                 _submitState.value = SubmitState.Error(e.message ?: "Unable to apply override.")
             }

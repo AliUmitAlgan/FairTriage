@@ -128,9 +128,9 @@ data class PatientDetailScreen(private val patientId: Int) : Screen {
                     completing = actionState == PatientActionState.Loading,
                     onOverride = {
                         navigator.push(
-                            OverrideDecisionScreen(
+                            AddPatientScreen(
                                 patientId = currentState.data.id,
-                                currentTriageLevel = currentState.data.triage_level ?: "Stable"
+                                overrideMode = true
                             )
                         )
                     },
@@ -182,7 +182,7 @@ private fun PatientDetailContent(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "Waiting ${formatMinutes(patient.waiting_minutes)}" + (patient.max_waiting_minutes?.let { " / max ${it} min" } ?: ""),
+                    text = "Waiting ${formatMinutes(patient.waiting_minutes)}" + (patient.max_waiting_minutes?.let { " / max $it min" } ?: ""),
                     style = FairTypography.LabelSmall,
                     color = if (patient.max_waiting_exceeded) FairColors.WarningBorder else Color(0x7394D2EC),
                     modifier = Modifier.padding(top = 4.dp),

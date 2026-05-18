@@ -63,7 +63,7 @@ object LocalTriageCache {
         }.getOrDefault(emptyList())
     }
 
-    fun addPendingCreate(request: CreatePatientRequest) {
+    fun addPendingCreate(request: CreatePatientRequest): Patient {
         val pending = pendingCreates() + request
         put(KEY_PENDING_CREATES, json.encodeToString(ListSerializer(CreatePatientRequest.serializer()), pending))
 
@@ -79,6 +79,7 @@ object LocalTriageCache {
             actionType = "created",
             explanation = "Offline patient record created and queued for backend synchronization."
         )
+        return localPatient
     }
 
     fun pendingCreates(): List<CreatePatientRequest> {

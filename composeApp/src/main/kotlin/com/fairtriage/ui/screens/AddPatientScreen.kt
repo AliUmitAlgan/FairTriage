@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,20 +33,28 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.fairtriage.core.ScreenState
 import com.fairtriage.model.CreatePatientRequest
+import com.fairtriage.model.Patient
 import com.fairtriage.screenmodel.AddPatientScreenModel
 import com.fairtriage.screenmodel.SubmitState
 import com.fairtriage.ui.components.*
 import kotlin.math.roundToInt
 
-class AddPatientScreen : Screen {
+data class AddPatientScreen(
+    private val patientId: Int? = null,
+    private val overrideMode: Boolean = false
+) : Screen {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { AddPatientScreenModel() }
         val actionState by screenModel.submitState.collectAsState()
+        val patientState by screenModel.patientState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
+        val editingPatientId = if (overrideMode) patientId else null
+        val isOverrideMode = editingPatientId != null
 
         var fullName by remember { mutableStateOf("") }
         var ageStr by remember { mutableStateOf("") }
@@ -106,10 +115,50 @@ class AddPatientScreen : Screen {
                 )
             )
         }
+        val allSymptomOptions = remember(symptomGroups) { symptomGroups.flatMap { it.options }.toSet() }
+        val allChronicOptions = remember(chronicGroups) { chronicGroups.flatMap { it.options }.toSet() }
+        var populatedPatientId by remember { mutableStateOf<Int?>(null) }
+
+        LaunchedEffect(editingPatientId) {
+            editingPatientId?.let { screenModel.loadPatient(it) }
+        }
+
+        LaunchedEffect(patientState) {
+            val patient = (patientState as? ScreenState.Success<Patient>)?.data ?: return@LaunchedEffect
+            if (populatedPatientId == patient.id) return@LaunchedEffect
+            fullName = patient.full_name
+            ageStr = patient.age.toString()
+            gender = patient.gender
+            val symptomParse = parseChecklistText(patient.symptoms_description, allSymptomOptions)
+            selectedSymptoms = symptomParse.selected
+            clinicalNote = symptomParse.note
+            painLevel = patient.pain_level.toFloat()
+            fever = patient.fever
+            heartRateStr = nearestVitalValue(heartRateOptions(), patient.heart_rate).toString()
+            sysBPStr = nearestVitalValue(systolicOptions(), patient.blood_pressure_systolic).toString()
+            diaBPStr = nearestVitalValue(diastolicOptions(), patient.blood_pressure_diastolic).toString()
+            hasChronic = patient.has_chronic_disease
+            val chronicParse = parseChecklistText(patient.chronic_disease_description.orEmpty(), allChronicOptions)
+            selectedChronicConditions = chronicParse.selected
+            chronicNote = chronicParse.note
+            mockImageScore = patient.image_score.toFloat().coerceIn(0f, 1f)
+            populatedPatientId = patient.id
+        }
 
         LaunchedEffect(actionState) {
             when (val currentAction = actionState) {
-                SubmitState.Success -> navigator.push(QueueScreen())
+                is SubmitState.Success -> {
+                    if (isOverrideMode) {
+                        navigator.pop()
+                    } else {
+                        val newPatientId = currentAction.patientId
+                        if (newPatientId != null) {
+                            navigator.replace(PatientDetailScreen(newPatientId))
+                        } else {
+                            navigator.replace(DashboardScreen())
+                        }
+                    }
+                }
                 is SubmitState.Error -> {
                     snackbarHostState.showSnackbar(currentAction.message)
                     screenModel.clearError()
@@ -119,14 +168,62 @@ class AddPatientScreen : Screen {
         }
 
         Scaffold(
-            topBar = { FairTriageTopBar(title = "New patient", onBack = { navigator.pop() }) },
+            topBar = { FairTriageTopBar(title = if (isOverrideMode) "Override patient data" else "New patient", onBack = { navigator.pop() }) },
             snackbarHost = { SnackbarHost(snackbarHostState) },
             containerColor = FairColors.ScreenBg
         ) { paddingValues ->
+            if (isOverrideMode && patientState is ScreenState.Loading) {
+                LoadingState(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                )
+                return@Scaffold
+            }
+            if (isOverrideMode && patientState is ScreenState.Error) {
+                val message = (patientState as ScreenState.Error).message
+                ErrorState(
+                    errorMessage = message,
+                    onRetry = { screenModel.loadPatient(editingPatientId) },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                )
+                return@Scaffold
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                if (isOverrideMode) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = FairColors.WarningBg),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, FairColors.WarningBorder.copy(alpha = 0.45f))
+                        ) {
+                            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = FairColors.WarningBorder, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Edit clinical data for override review",
+                                        style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = FairColors.WarningText
+                                    )
+                                    Text(
+                                        text = "Existing patient values are pre-selected. Saving will update backend data, recalculate risk, and log the clinician override.",
+                                        style = FairTypography.LabelSmall,
+                                        color = FairColors.TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Section: Personal information
                 item {
                     StandardCard {
@@ -458,7 +555,25 @@ class AddPatientScreen : Screen {
                                 chronic_disease_description = if (hasChronic) chronicDescription else null,
                                 image_score = mockImageScore.toDouble()
                             )
-                            screenModel.submit(req)
+                            val targetPatientId = editingPatientId
+                            if (targetPatientId != null) {
+                                screenModel.submitOverride(
+                                    patientId = targetPatientId,
+                                    request = req,
+                                    overrideReasons = buildOverrideReasons(
+                                        selectedSymptoms = selectedSymptoms,
+                                        painLevel = painLevel.toInt(),
+                                        fever = fever,
+                                        heartRate = hr,
+                                        systolic = sys,
+                                        diastolic = dia,
+                                        hasChronic = hasChronic,
+                                        selectedChronicConditions = selectedChronicConditions
+                                    )
+                                )
+                            } else {
+                                screenModel.submit(req)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
@@ -467,7 +582,11 @@ class AddPatientScreen : Screen {
                         if (isLoading) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
                         } else {
-                            Text("Submit & calculate risk", style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium), color = Color.White)
+                            Text(
+                                if (isOverrideMode) "Save override & recalculate" else "Submit & calculate risk",
+                                style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium),
+                                color = Color.White
+                            )
                         }
                     }
                 }
@@ -482,6 +601,11 @@ class AddPatientScreen : Screen {
         val options: List<String>
     )
 
+    private data class ChecklistParse(
+        val selected: Set<String>,
+        val note: String
+    )
+
     private data class VitalOption(
         val title: String,
         val subtitle: String,
@@ -489,6 +613,56 @@ class AddPatientScreen : Screen {
         val color: Color,
         val tint: Color
     )
+
+    private fun parseChecklistText(text: String, knownOptions: Set<String>): ChecklistParse {
+        val knownByLower = knownOptions.associateBy { it.lowercase() }
+        val selected = mutableSetOf<String>()
+        val notes = mutableListOf<String>()
+
+        text.split(";")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .forEach { part ->
+                val cleaned = part.removePrefix("Additional note:").trim()
+                val known = knownByLower[cleaned.lowercase()]
+                if (known != null) {
+                    selected += known
+                } else {
+                    notes += cleaned
+                }
+            }
+
+        return ChecklistParse(selected = selected, note = notes.joinToString("; "))
+    }
+
+    private fun nearestVitalValue(options: List<VitalOption>, actualValue: Int): Int {
+        return options.minByOrNull { kotlin.math.abs(it.value - actualValue) }?.value ?: actualValue
+    }
+
+    private fun buildOverrideReasons(
+        selectedSymptoms: Set<String>,
+        painLevel: Int,
+        fever: Boolean,
+        heartRate: Int,
+        systolic: Int,
+        diastolic: Int,
+        hasChronic: Boolean,
+        selectedChronicConditions: Set<String>
+    ): List<String> {
+        val reasons = mutableListOf("Doctor or nurse bedside assessment")
+        if (selectedSymptoms.any { clinicalFindingColor(it) == FairColors.CriticalFill }) reasons += "Clinical deterioration observed"
+        if (heartRate !in 60..100) reasons += "Abnormal heart rate"
+        if (systolic !in 90..120 || diastolic !in 60..80) reasons += "Abnormal blood pressure"
+        if (fever || selectedSymptoms.any { it.contains("Fever", ignoreCase = true) || it.contains("Cough", ignoreCase = true) }) reasons += "Persistent fever or infection concern"
+        if (painLevel >= 7 || selectedSymptoms.any { it.contains("Severe", ignoreCase = true) }) reasons += "Pain level increased or uncontrolled"
+        if (hasChronic && selectedChronicConditions.any { isHighRiskChronicCondition(it) }) reasons += "High-risk chronic disease"
+        if (hasChronic && selectedChronicConditions.any { it.contains("Frequent ED", ignoreCase = true) }) reasons += "Requires faster physician review"
+        return reasons.distinct().take(12)
+    }
+
+    private fun isHighRiskChronicCondition(option: String): Boolean {
+        return option in setOf("Heart disease", "Kidney disease", "Cancer treatment", "Immunosuppressed", "Pregnancy risk")
+    }
 
     @Composable
     private fun ClinicalOptionSection(

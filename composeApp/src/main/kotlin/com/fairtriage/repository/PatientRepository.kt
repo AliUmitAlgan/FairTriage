@@ -9,15 +9,17 @@ import com.fairtriage.model.Patient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 
 interface PatientRepository {
     suspend fun getPatients(): List<Patient>
     suspend fun getPatientsFromNetwork(): List<Patient>
     suspend fun getPatient(patientId: Int): Patient
-    suspend fun createPatient(request: CreatePatientRequest)
+    suspend fun createPatient(request: CreatePatientRequest): Patient
+    suspend fun updatePatient(patientId: Int, request: CreatePatientRequest): Patient
     suspend fun completePatient(patientId: Int)
-    suspend fun overridePatient(patientId: Int, request: OverrideRequest)
+    suspend fun overridePatient(patientId: Int, request: OverrideRequest): Patient
 }
 
 class KtorPatientRepository : PatientRepository {
@@ -53,15 +55,28 @@ class KtorPatientRepository : PatientRepository {
         }
     }
 
-    override suspend fun createPatient(request: CreatePatientRequest): Unit = apiCall("Create patient") {
+    override suspend fun createPatient(request: CreatePatientRequest): Patient = apiCall("Create patient") {
         runCatching {
             client.post("$BASE_URL/patients") {
                 setBody(request)
-            }
-        }.onFailure {
+            }.body<Patient>()
+        }.onSuccess { patient ->
+            val updated = (LocalTriageCache.cachedPatients().filterNot { it.id == patient.id } + patient)
+            LocalTriageCache.cachePatients(updated)
+            LocalTriageCache.cacheQueue((LocalTriageCache.cachedQueue().filterNot { it.id == patient.id } + patient).filter { it.status == "waiting" })
+        }.getOrElse {
             LocalTriageCache.addPendingCreate(request)
         }
-        Unit
+    }
+
+    override suspend fun updatePatient(patientId: Int, request: CreatePatientRequest): Patient = apiCall("Update patient") {
+        client.put("$BASE_URL/patients/$patientId") {
+            setBody(request)
+        }.body<Patient>().also { patient ->
+            val updated = (LocalTriageCache.cachedPatients().filterNot { it.id == patient.id } + patient)
+            LocalTriageCache.cachePatients(updated)
+            LocalTriageCache.cacheQueue((LocalTriageCache.cachedQueue().filterNot { it.id == patient.id } + patient).filter { it.status == "waiting" })
+        }
     }
 
     override suspend fun completePatient(patientId: Int): Unit = apiCall("Complete patient") {
@@ -73,15 +88,22 @@ class KtorPatientRepository : PatientRepository {
         Unit
     }
 
-    override suspend fun overridePatient(patientId: Int, request: OverrideRequest): Unit = apiCall("Override decision") {
+    override suspend fun overridePatient(patientId: Int, request: OverrideRequest): Patient = apiCall("Override decision") {
         runCatching {
             client.post("$BASE_URL/patients/$patientId/override") {
                 setBody(request)
-            }
+            }.body<Patient>()
+        }.onSuccess { patient ->
+            val updated = (LocalTriageCache.cachedPatients().filterNot { it.id == patient.id } + patient)
+            LocalTriageCache.cachePatients(updated)
+            LocalTriageCache.cacheQueue((LocalTriageCache.cachedQueue().filterNot { it.id == patient.id } + patient).filter { it.status == "waiting" })
         }.onFailure {
             LocalTriageCache.addPendingOverride(patientId, request)
+        }.getOrElse { error ->
+            LocalTriageCache.cachedPatients().firstOrNull { it.id == patientId }
+                ?: LocalTriageCache.cachedQueue().firstOrNull { it.id == patientId }
+                ?: throw error
         }
-        Unit
     }
 
     private suspend fun syncPendingActions() {
