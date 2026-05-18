@@ -26,6 +26,10 @@ HIGH_RISK_SYMPTOM_KEYWORDS = {
     "calf pain with swelling": 10,
     "pacemaker or icd symptom": 12,
     "chest pain": 20,
+    "abdominal pain": 6,
+    "arm or leg pain": 4,
+    "back pain": 4,
+    "headache": 4,
     "shortness of breath": 20,
     "confusion": 18,
     "seizure": 18,
@@ -45,34 +49,55 @@ HIGH_RISK_SYMPTOM_KEYWORDS = {
     "burn injury": 10,
     "deep wound": 6,
     "infected wound": 8,
+    "abscess": 5,
     "cellulitis spreading": 10,
+    "pressure sore": 5,
     "large burn area": 16,
     "electrical burn": 20,
     "frostbite": 10,
     "severe localized pain": 10,
     "wheezing or asthma attack": 12,
+    "fever or chills": 8,
+    "cough": 3,
+    "productive cough": 5,
     "suspected sepsis": 25,
+    "rash or swelling": 4,
+    "dizziness or fainting": 6,
+    "vision changes": 6,
+    "palpitations": 6,
+    "irregular heartbeat": 8,
     "persistent vomiting": 8,
+    "nausea or vomiting": 5,
+    "diarrhea": 3,
     "dehydration": 8,
+    "urinary pain": 3,
+    "flank pain": 5,
     "chemical exposure": 10,
+    "medication reaction": 6,
     "animal or insect bite": 6,
     "alcohol or drug intoxication": 8,
     "pregnancy with abdominal pain": 12,
     "newborn or infant concern": 16,
+    "child with poor intake": 8,
     "child with persistent fever": 10,
     "sudden vision loss": 16,
     "chemical eye exposure": 18,
     "severe eye pain": 10,
     "severe nosebleed": 8,
+    "ear pain": 3,
     "dental abscess": 6,
     "facial swelling": 8,
     "suicidal thoughts": 18,
     "self-harm injury": 18,
     "violent or unsafe behavior": 16,
     "acute psychosis": 12,
+    "panic attack": 4,
+    "severe insomnia with distress": 3,
     "substance withdrawal": 12,
+    "social safety concern": 4,
     "urinary retention": 8,
     "testicular pain": 12,
+    "pelvic pain": 5,
     "vaginal bleeding": 8,
     "severe menstrual bleeding": 10,
     "sexual assault concern": 10,
@@ -87,11 +112,16 @@ HIGH_RISK_SYMPTOM_KEYWORDS = {
     "blast injury": 20,
     "needs decontamination": 14,
     "fall in older adult": 10,
+    "unable to perform daily activities": 5,
     "new confusion in older adult": 18,
     "poor oral intake": 6,
+    "caregiver concern": 3,
     "unsafe discharge risk": 6,
     "unable to walk": 8,
+    "severe fatigue": 4,
+    "severe anxiety or agitation": 5,
     "needs isolation": 6,
+    "other clinical concern": 4,
     "worsening symptoms": 10,
 }
 HIGH_RISK_HISTORY_KEYWORDS = {
@@ -109,10 +139,12 @@ HIGH_RISK_HISTORY_KEYWORDS = {
     "pregnancy risk": 15,
     "stroke history": 15,
     "seizure disorder": 12,
+    "neurologic disease": 8,
     "dementia or cognitive impairment": 10,
     "organ transplant": 18,
     "dialysis patient": 18,
     "home oxygen use": 15,
+    "sleep apnea": 5,
     "cystic fibrosis": 15,
     "hiv or aids": 12,
     "long-term steroid use": 12,
@@ -123,13 +155,16 @@ HIGH_RISK_HISTORY_KEYWORDS = {
     "severe anemia history": 10,
     "high-risk medication use": 8,
     "recent medication change": 6,
+    "medication allergy": 4,
     "recent surgery": 12,
     "diabetes": 10,
+    "hypertension": 5,
     "asthma or copd": 10,
     "liver disease": 10,
     "cirrhosis": 12,
     "insulin-dependent diabetes": 12,
     "adrenal insufficiency": 12,
+    "thyroid disease": 4,
     "severe obesity": 6,
     "malnutrition risk": 8,
     "postpartum under 6 weeks": 12,
@@ -137,6 +172,7 @@ HIGH_RISK_HISTORY_KEYWORDS = {
     "lives alone with limited support": 5,
     "pediatric chronic illness": 10,
     "developmental disability": 6,
+    "mobility limitation": 5,
     "older adult frailty": 12,
     "recent hospitalization": 8,
     "indwelling catheter": 8,
@@ -147,6 +183,8 @@ HIGH_RISK_HISTORY_KEYWORDS = {
     "recent trauma admission": 8,
     "homelessness or housing insecurity": 5,
     "known infectious exposure": 6,
+    "frequent ed visits": 5,
+    "no regular medication access": 5,
 }
 CRITICAL_SYMPTOM_KEYWORDS = (
     "unconscious or unresponsive",
@@ -198,6 +236,10 @@ URGENT_SYMPTOM_KEYWORDS = (
     "hypothermia concern",
     "needs decontamination",
     "new confusion in older adult",
+    "chest pain",
+    "severe localized pain",
+    "bleeding",
+    "worsening symptoms",
 )
 OVERRIDE_CRITICAL_KEYWORDS = (
     "chest pain",
@@ -291,14 +333,42 @@ def calculate_symptom_score(patient: Any) -> float:
     base += _keyword_score(_read(patient, "symptoms_description"), HIGH_RISK_SYMPTOM_KEYWORDS)
     if _read(patient, "fever"):
         base += 15
-    if _read(patient, "heart_rate") > 100:
+
+    heart_rate = _read(patient, "heart_rate")
+    systolic = _read(patient, "blood_pressure_systolic")
+    diastolic = _read(patient, "blood_pressure_diastolic")
+
+    if heart_rate < 50:
+        base += 25
+    elif heart_rate < 60:
+        base += 8
+    if heart_rate > 100:
         base += 10
-    if _read(patient, "heart_rate") > 120:
+    if heart_rate > 120:
         base += 10
-    if _read(patient, "blood_pressure_systolic") > 140:
+
+    if systolic >= 180:
+        base += 20
+    elif systolic >= 160:
+        base += 10
+    elif systolic > 140:
         base += 5
-    if _read(patient, "blood_pressure_systolic") < 100:
+    if systolic < 90:
+        base += 25
+    elif systolic < 100:
         base += 10
+
+    if diastolic >= 110:
+        base += 20
+    elif diastolic >= 100:
+        base += 10
+    elif diastolic > 80:
+        base += 5
+    if diastolic < 50:
+        base += 20
+    elif diastolic < 60:
+        base += 8
+
     return _round_score(min(base, 100))
 
 
@@ -341,9 +411,21 @@ def safety_risk_floor(patient: Any) -> float:
     symptoms_description = _read(patient, "symptoms_description")
     floor = 0.0
 
-    if _read(patient, "heart_rate") > 130:
+    heart_rate = _read(patient, "heart_rate")
+    systolic = _read(patient, "blood_pressure_systolic")
+    diastolic = _read(patient, "blood_pressure_diastolic")
+
+    if heart_rate > 130:
         floor = max(floor, CRITICAL_RISK_FLOOR)
-    if _read(patient, "blood_pressure_systolic") < 90:
+    if heart_rate < 50:
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+    if systolic < 90:
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+    if systolic >= 180:
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+    if diastolic >= 110:
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+    if diastolic < 50:
         floor = max(floor, CRITICAL_RISK_FLOOR)
     if _contains_any(symptoms_description, CRITICAL_SYMPTOM_KEYWORDS):
         floor = max(floor, CRITICAL_RISK_FLOOR)
@@ -378,13 +460,33 @@ def determine_triage_level(patient: Any, clinical_risk_score: float) -> tuple[st
     reasons: list[str] = []
     symptoms_description = _read(patient, "symptoms_description")
 
-    if _read(patient, "heart_rate") > 130:
+    heart_rate = _read(patient, "heart_rate")
+    systolic = _read(patient, "blood_pressure_systolic")
+    diastolic = _read(patient, "blood_pressure_diastolic")
+
+    if heart_rate > 130:
         triage_level = _escalate(triage_level, "Critical")
         reasons.append("heart rate exceeds 130 bpm (safety rule triggered)")
 
-    if _read(patient, "blood_pressure_systolic") < 90:
+    if heart_rate < 50:
+        triage_level = _escalate(triage_level, "Critical")
+        reasons.append("heart rate is below 50 bpm (safety rule triggered)")
+
+    if systolic < 90:
         triage_level = _escalate(triage_level, "Critical")
         reasons.append("systolic blood pressure is below 90 mmHg (safety rule triggered)")
+
+    if systolic >= 180:
+        triage_level = _escalate(triage_level, "Critical")
+        reasons.append("systolic blood pressure is 180 mmHg or higher (safety rule triggered)")
+
+    if diastolic >= 110:
+        triage_level = _escalate(triage_level, "Critical")
+        reasons.append("diastolic blood pressure is 110 mmHg or higher (safety rule triggered)")
+
+    if diastolic < 50:
+        triage_level = _escalate(triage_level, "Critical")
+        reasons.append("diastolic blood pressure is below 50 mmHg (safety rule triggered)")
 
     if _read(patient, "pain_level") >= 9 and _read(patient, "fever"):
         triage_level = _escalate(triage_level, "Urgent")
@@ -504,7 +606,14 @@ def infer_doctor_override_level(
     inferred_level = "Stable"
     normalized_reason = (override_reason or "").lower()
 
-    if _read(patient, "heart_rate") > 130 or _read(patient, "blood_pressure_systolic") < 90:
+    if (
+        _read(patient, "heart_rate") > 130
+        or _read(patient, "heart_rate") < 50
+        or _read(patient, "blood_pressure_systolic") < 90
+        or _read(patient, "blood_pressure_systolic") >= 180
+        or _read(patient, "blood_pressure_diastolic") >= 110
+        or _read(patient, "blood_pressure_diastolic") < 50
+    ):
         inferred_level = _escalate(inferred_level, "Critical")
 
     if _contains_any(normalized_reason, OVERRIDE_CRITICAL_KEYWORDS):
