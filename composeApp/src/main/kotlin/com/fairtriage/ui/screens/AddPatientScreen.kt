@@ -83,7 +83,7 @@ data class AddPatientScreen(
             listOf(
                 ClinicalOptionGroup(
                     title = "Pain & trauma",
-                    options = listOf("Chest pain", "Abdominal pain", "Headache", "Trauma or injury", "Severe localized pain")
+                    options = listOf("Chest pain", "Abdominal pain", "Headache", "Trauma or injury", "Severe localized pain", "Arm or leg pain")
                 ),
                 ClinicalOptionGroup(
                     title = "Infection & respiratory",
@@ -96,6 +96,17 @@ data class AddPatientScreen(
                 ClinicalOptionGroup(
                     title = "General risk signs",
                     options = listOf("Bleeding", "Dehydration", "Severe fatigue", "Worsening symptoms", "Other clinical concern")
+                ),
+                ClinicalOptionGroup(
+                    title = "Mild / stable symptoms",
+                    options = listOf(
+                        "Mild arm pain",
+                        "Mild back pain",
+                        "Mild sore throat",
+                        "Minor cut or abrasion",
+                        "Mild skin irritation",
+                        "Medication refill concern"
+                    )
                 )
             )
         }
@@ -851,6 +862,7 @@ data class AddPatientScreen(
         "abdominal pain",
         "headache",
         "trauma or injury",
+        "arm or leg pain",
         "fever or chills",
         "cough",
         "nausea or vomiting",
@@ -860,6 +872,12 @@ data class AddPatientScreen(
         "dehydration",
         "severe fatigue",
         "other clinical concern" -> FairColors.UrgentFill
+        "mild arm pain",
+        "mild back pain",
+        "mild sore throat",
+        "minor cut or abrasion",
+        "mild skin irritation",
+        "medication refill concern" -> FairColors.StableFill
         else -> FairColors.StableFill
     }
 
