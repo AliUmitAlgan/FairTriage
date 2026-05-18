@@ -7,14 +7,45 @@ from typing import Any
 TRIAGE_RANK = {"Critical": 0, "Urgent": 1, "Stable": 2}
 MAX_WAITING_MINUTES = {"Urgent": 90, "Stable": 180}
 HIGH_RISK_SYMPTOM_KEYWORDS = {
+    "unconscious or unresponsive": 35,
+    "reduced consciousness": 30,
+    "airway obstruction": 35,
+    "severe breathing difficulty": 30,
+    "cyanosis": 30,
+    "signs of shock": 35,
+    "severe active bleeding": 30,
+    "cardiac arrest concern": 40,
     "chest pain": 20,
     "shortness of breath": 20,
     "confusion": 18,
     "seizure": 18,
     "weakness or numbness": 15,
+    "facial droop or speech difficulty": 20,
+    "severe sudden headache": 18,
     "bleeding": 12,
+    "blood in vomit or stool": 15,
+    "severe abdominal guarding": 15,
+    "anaphylaxis concern": 30,
+    "poisoning or overdose": 18,
+    "pregnancy with bleeding": 20,
+    "child with lethargy": 18,
     "trauma": 12,
+    "head injury": 14,
+    "fracture or deformity": 10,
+    "burn injury": 10,
     "severe localized pain": 10,
+    "wheezing or asthma attack": 12,
+    "suspected sepsis": 25,
+    "persistent vomiting": 8,
+    "dehydration": 8,
+    "chemical exposure": 10,
+    "animal or insect bite": 6,
+    "alcohol or drug intoxication": 8,
+    "pregnancy with abdominal pain": 12,
+    "newborn or infant concern": 16,
+    "child with persistent fever": 10,
+    "unable to walk": 8,
+    "needs isolation": 6,
     "worsening symptoms": 10,
 }
 HIGH_RISK_HISTORY_KEYWORDS = {
@@ -23,11 +54,45 @@ HIGH_RISK_HISTORY_KEYWORDS = {
     "cancer treatment": 18,
     "immunosuppressed": 18,
     "pregnancy risk": 15,
+    "stroke history": 15,
+    "seizure disorder": 12,
+    "organ transplant": 18,
+    "dialysis patient": 18,
     "uses blood thinners": 15,
     "recent surgery": 12,
     "diabetes": 10,
     "asthma or copd": 10,
+    "liver disease": 10,
+    "older adult frailty": 12,
+    "recent hospitalization": 8,
+    "indwelling catheter": 8,
+    "known infectious exposure": 6,
 }
+CRITICAL_SYMPTOM_KEYWORDS = (
+    "unconscious or unresponsive",
+    "airway obstruction",
+    "severe breathing difficulty",
+    "cyanosis",
+    "signs of shock",
+    "severe active bleeding",
+    "cardiac arrest concern",
+    "anaphylaxis concern",
+)
+URGENT_SYMPTOM_KEYWORDS = (
+    "reduced consciousness",
+    "shortness of breath",
+    "confusion",
+    "seizure",
+    "weakness or numbness",
+    "facial droop or speech difficulty",
+    "severe sudden headache",
+    "blood in vomit or stool",
+    "severe abdominal guarding",
+    "poisoning or overdose",
+    "pregnancy with bleeding",
+    "child with lethargy",
+    "suspected sepsis",
+)
 OVERRIDE_CRITICAL_KEYWORDS = (
     "chest pain",
     "cardiac concern",
@@ -189,7 +254,11 @@ def determine_triage_level(patient: Any, clinical_risk_score: float) -> tuple[st
         triage_level = _escalate(triage_level, "Urgent")
         reasons.append(f"pain level is {_read(patient, 'pain_level')} and fever is present")
 
-    if _contains_any(symptoms_description, ("shortness of breath", "confusion", "seizure", "weakness or numbness")):
+    if _contains_any(symptoms_description, CRITICAL_SYMPTOM_KEYWORDS):
+        triage_level = _escalate(triage_level, "Critical")
+        reasons.append("primary survey red-flag symptom triggered Critical safety escalation")
+
+    if _contains_any(symptoms_description, URGENT_SYMPTOM_KEYWORDS):
         triage_level = _escalate(triage_level, "Urgent")
         reasons.append("high-risk symptom selection triggered safety escalation")
 

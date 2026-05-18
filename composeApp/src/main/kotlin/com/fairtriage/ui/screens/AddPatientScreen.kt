@@ -82,20 +82,107 @@ data class AddPatientScreen(
         val symptomGroups = remember {
             listOf(
                 ClinicalOptionGroup(
+                    title = "Primary survey: consciousness / ABC",
+                    options = listOf(
+                        "Unconscious or unresponsive",
+                        "Reduced consciousness",
+                        "Airway obstruction",
+                        "Severe breathing difficulty",
+                        "Cyanosis",
+                        "Signs of shock",
+                        "Severe active bleeding",
+                        "Cardiac arrest concern"
+                    )
+                ),
+                ClinicalOptionGroup(
                     title = "Pain & trauma",
-                    options = listOf("Chest pain", "Abdominal pain", "Headache", "Trauma or injury", "Severe localized pain", "Arm or leg pain")
+                    options = listOf(
+                        "Chest pain",
+                        "Abdominal pain",
+                        "Severe localized pain",
+                        "Arm or leg pain",
+                        "Back pain",
+                        "Headache",
+                        "Trauma or injury",
+                        "Head injury",
+                        "Fracture or deformity",
+                        "Burn injury"
+                    )
                 ),
                 ClinicalOptionGroup(
                     title = "Infection & respiratory",
-                    options = listOf("Fever or chills", "Cough", "Shortness of breath", "Nausea or vomiting", "Rash or swelling")
+                    options = listOf(
+                        "Fever or chills",
+                        "Cough",
+                        "Shortness of breath",
+                        "Wheezing or asthma attack",
+                        "Productive cough",
+                        "Sore throat",
+                        "Flu-like symptoms",
+                        "Suspected sepsis",
+                        "Rash or swelling"
+                    )
                 ),
                 ClinicalOptionGroup(
                     title = "Neurologic & cardiac",
-                    options = listOf("Dizziness or fainting", "Confusion", "Weakness or numbness", "Palpitations", "Seizure concern")
+                    options = listOf(
+                        "Confusion",
+                        "Seizure concern",
+                        "Weakness or numbness",
+                        "Facial droop or speech difficulty",
+                        "Severe sudden headache",
+                        "Dizziness or fainting",
+                        "Vision changes",
+                        "Palpitations",
+                        "Irregular heartbeat"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Gastrointestinal / renal",
+                    options = listOf(
+                        "Nausea or vomiting",
+                        "Persistent vomiting",
+                        "Diarrhea",
+                        "Dehydration",
+                        "Blood in vomit or stool",
+                        "Severe abdominal guarding",
+                        "Urinary pain",
+                        "Flank pain"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Allergy / toxicology / exposure",
+                    options = listOf(
+                        "Anaphylaxis concern",
+                        "Poisoning or overdose",
+                        "Medication reaction",
+                        "Chemical exposure",
+                        "Animal or insect bite",
+                        "Alcohol or drug intoxication"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Pregnancy / pediatric risk",
+                    options = listOf(
+                        "Pregnancy with bleeding",
+                        "Pregnancy with abdominal pain",
+                        "Newborn or infant concern",
+                        "Child with poor intake",
+                        "Child with persistent fever",
+                        "Child with lethargy"
+                    )
                 ),
                 ClinicalOptionGroup(
                     title = "General risk signs",
-                    options = listOf("Bleeding", "Dehydration", "Severe fatigue", "Worsening symptoms", "Other clinical concern")
+                    options = listOf(
+                        "Bleeding",
+                        "Severe fatigue",
+                        "Worsening symptoms",
+                        "Unable to walk",
+                        "Severe anxiety or agitation",
+                        "Needs isolation",
+                        "Other clinical concern"
+                    )
                 ),
                 ClinicalOptionGroup(
                     title = "Mild / stable symptoms",
@@ -103,9 +190,13 @@ data class AddPatientScreen(
                         "Mild arm pain",
                         "Mild back pain",
                         "Mild sore throat",
+                        "Mild cough",
+                        "Mild headache",
                         "Minor cut or abrasion",
                         "Mild skin irritation",
-                        "Medication refill concern"
+                        "Medication refill concern",
+                        "Routine wound check",
+                        "Stable chronic complaint"
                     )
                 )
             )
@@ -114,15 +205,43 @@ data class AddPatientScreen(
             listOf(
                 ClinicalOptionGroup(
                     title = "High-risk chronic disease",
-                    options = listOf("Heart disease", "Kidney disease", "Cancer treatment", "Immunosuppressed", "Pregnancy risk")
+                    options = listOf(
+                        "Heart disease",
+                        "Kidney disease",
+                        "Cancer treatment",
+                        "Immunosuppressed",
+                        "Pregnancy risk",
+                        "Stroke history",
+                        "Seizure disorder",
+                        "Organ transplant",
+                        "Dialysis patient"
+                    )
                 ),
                 ClinicalOptionGroup(
                     title = "Moderate-risk condition",
-                    options = listOf("Diabetes", "Hypertension", "Asthma or COPD", "Neurologic disease")
+                    options = listOf(
+                        "Diabetes",
+                        "Hypertension",
+                        "Asthma or COPD",
+                        "Neurologic disease",
+                        "Liver disease",
+                        "Psychiatric history",
+                        "Mobility limitation",
+                        "Older adult frailty"
+                    )
                 ),
                 ClinicalOptionGroup(
                     title = "Ongoing care context",
-                    options = listOf("Uses blood thinners", "Recent surgery", "Frequent ED visits", "Medication allergy")
+                    options = listOf(
+                        "Uses blood thinners",
+                        "Recent surgery",
+                        "Frequent ED visits",
+                        "Medication allergy",
+                        "Recent hospitalization",
+                        "Indwelling catheter",
+                        "Known infectious exposure",
+                        "No regular medication access"
+                    )
                 )
             )
         }
@@ -672,7 +791,17 @@ data class AddPatientScreen(
     }
 
     private fun isHighRiskChronicCondition(option: String): Boolean {
-        return option in setOf("Heart disease", "Kidney disease", "Cancer treatment", "Immunosuppressed", "Pregnancy risk")
+        return option in setOf(
+            "Heart disease",
+            "Kidney disease",
+            "Cancer treatment",
+            "Immunosuppressed",
+            "Pregnancy risk",
+            "Stroke history",
+            "Seizure disorder",
+            "Organ transplant",
+            "Dialysis patient"
+        )
     }
 
     @Composable
@@ -851,33 +980,77 @@ data class AddPatientScreen(
     )
 
     private fun clinicalFindingColor(option: String): Color = when (option.lowercase()) {
+        "unconscious or unresponsive",
+        "reduced consciousness",
+        "airway obstruction",
+        "severe breathing difficulty",
+        "cyanosis",
+        "signs of shock",
+        "severe active bleeding",
+        "cardiac arrest concern",
         "chest pain",
         "shortness of breath",
         "confusion",
         "seizure concern",
         "weakness or numbness",
+        "facial droop or speech difficulty",
+        "severe sudden headache",
         "bleeding",
+        "blood in vomit or stool",
+        "severe abdominal guarding",
+        "anaphylaxis concern",
+        "poisoning or overdose",
+        "pregnancy with bleeding",
+        "child with lethargy",
         "severe localized pain",
         "worsening symptoms" -> FairColors.CriticalFill
         "abdominal pain",
         "headache",
         "trauma or injury",
+        "head injury",
+        "fracture or deformity",
+        "burn injury",
         "arm or leg pain",
+        "back pain",
         "fever or chills",
         "cough",
+        "wheezing or asthma attack",
+        "productive cough",
+        "suspected sepsis",
         "nausea or vomiting",
+        "persistent vomiting",
+        "diarrhea",
         "rash or swelling",
         "dizziness or fainting",
+        "vision changes",
         "palpitations",
+        "irregular heartbeat",
         "dehydration",
+        "flank pain",
+        "urinary pain",
+        "medication reaction",
+        "chemical exposure",
+        "animal or insect bite",
+        "alcohol or drug intoxication",
+        "pregnancy with abdominal pain",
+        "newborn or infant concern",
+        "child with poor intake",
+        "child with persistent fever",
         "severe fatigue",
+        "unable to walk",
+        "severe anxiety or agitation",
+        "needs isolation",
         "other clinical concern" -> FairColors.UrgentFill
         "mild arm pain",
         "mild back pain",
         "mild sore throat",
+        "mild cough",
+        "mild headache",
         "minor cut or abrasion",
         "mild skin irritation",
-        "medication refill concern" -> FairColors.StableFill
+        "medication refill concern",
+        "routine wound check",
+        "stable chronic complaint" -> FairColors.StableFill
         else -> FairColors.StableFill
     }
 
