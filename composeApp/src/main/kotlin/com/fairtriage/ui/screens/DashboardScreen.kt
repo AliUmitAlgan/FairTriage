@@ -1,7 +1,6 @@
 package com.fairtriage.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +26,6 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.fairtriage.core.LocalTriageCache
 import com.fairtriage.core.ScreenState
-import com.fairtriage.model.Patient
 import com.fairtriage.screenmodel.DashboardScreenModel
 import com.fairtriage.ui.components.*
 
@@ -97,10 +95,14 @@ class DashboardScreen : Screen {
                         ) {
                             Column {
                                 Text("Emergency department overview", style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium), color = FairColors.NavyText)
-                                val patientCount = if (state is ScreenState.Success) (state as ScreenState.Success).data.size else 0
+                                val patientCount = if (state is ScreenState.Success) {
+                                    (state as ScreenState.Success).data.count { it.status.equals("waiting", ignoreCase = true) }
+                                } else {
+                                    0
+                                }
                                 val pending = LocalTriageCache.pendingCreateCount()
                                 val syncText = if (pending > 0) "$pending pending offline sync" else "live sync ready"
-                                Text("$patientCount patients - $syncText", style = FairTypography.LabelSmall, color = Color(0x8094D2EC))
+                                Text("$patientCount active queue patients - $syncText", style = FairTypography.LabelSmall, color = Color(0x8094D2EC))
                             }
                             Box(modifier = Modifier.size(10.dp).background(FairColors.SuccessGreen, CircleShape))
                         }
@@ -116,14 +118,14 @@ class DashboardScreen : Screen {
                             modifier = Modifier.fillMaxWidth().height(240.dp)
                         )
                         is ScreenState.Success -> {
-                            val patients = currentState.data
+                            val patients = currentState.data.filter { it.status.equals("waiting", ignoreCase = true) }
                             val criticalCount = patients.count { it.triage_level.equals("Critical", ignoreCase = true) }
                             val urgentCount = patients.count { it.triage_level.equals("Urgent", ignoreCase = true) }
                             val stableCount = patients.count { it.triage_level.equals("Stable", ignoreCase = true) }
 
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    StatCard(title = "Total Patients", value = patients.size, color = FairColors.InfoBlueText, icon = Icons.Default.Group, modifier = Modifier.weight(1f))
+                                    StatCard(title = "Active Patients", value = patients.size, color = FairColors.InfoBlueText, icon = Icons.Default.Group, modifier = Modifier.weight(1f))
                                     StatCard(title = "Critical", value = criticalCount, color = FairColors.CriticalFill, icon = Icons.Default.Warning, modifier = Modifier.weight(1f))
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

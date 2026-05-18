@@ -13,6 +13,7 @@ import io.ktor.client.request.setBody
 
 interface PatientRepository {
     suspend fun getPatients(): List<Patient>
+    suspend fun getPatientsFromNetwork(): List<Patient>
     suspend fun getPatient(patientId: Int): Patient
     suspend fun createPatient(request: CreatePatientRequest)
     suspend fun completePatient(patientId: Int)
@@ -22,15 +23,20 @@ interface PatientRepository {
 class KtorPatientRepository : PatientRepository {
     private val client = ApiClient.httpClient
 
-    override suspend fun getPatients(): List<Patient> = apiCall("Load patients") {
+    override suspend fun getPatients(): List<Patient> = loadPatients(fallbackToCache = true)
+
+    override suspend fun getPatientsFromNetwork(): List<Patient> = loadPatients(fallbackToCache = false)
+
+    private suspend fun loadPatients(fallbackToCache: Boolean): List<Patient> = apiCall("Load patients") {
         syncPendingActions()
         runCatching {
             client.get("$BASE_URL/patients").body<List<Patient>>()
         }.onSuccess { patients ->
             LocalTriageCache.cachePatients(patients)
         }.getOrElse { error ->
+            if (!fallbackToCache) throw error
             val cached = LocalTriageCache.cachedPatients()
-            if (cached.isNotEmpty()) cached else throw error
+            cached.ifEmpty { throw error }
         }
     }
 

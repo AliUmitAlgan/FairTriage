@@ -57,7 +57,7 @@ class DashboardScreenModel(
     private suspend fun loadPatients() {
         _state.value = ScreenState.Loading
         try {
-            _state.value = ScreenState.Success(patientRepository.getPatients())
+            _state.value = ScreenState.Success(patientRepository.getPatientsFromNetwork())
         } catch (e: Throwable) {
             _state.value = ScreenState.Error(e.message ?: "Unable to load dashboard.")
         }
