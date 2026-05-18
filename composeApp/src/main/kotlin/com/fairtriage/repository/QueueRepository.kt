@@ -18,7 +18,7 @@ class KtorQueueRepository : QueueRepository {
     private val client = ApiClient.httpClient
 
     override suspend fun getQueue(): List<Patient> = apiCall("Load queue") {
-        syncPendingCreates()
+        syncPendingActions()
         runCatching {
             client.get("$BASE_URL/queue").body<List<Patient>>()
         }.onSuccess { queue ->
@@ -27,6 +27,12 @@ class KtorQueueRepository : QueueRepository {
             val cached = LocalTriageCache.cachedQueue()
             if (cached.isNotEmpty()) cached else throw error
         }
+    }
+
+    private suspend fun syncPendingActions() {
+        syncPendingCreates()
+        syncPendingOverrides()
+        syncPendingCompletions()
     }
 
     private suspend fun syncPendingCreates() {
@@ -43,5 +49,43 @@ class KtorQueueRepository : QueueRepository {
             if (!synced) remaining += request
         }
         LocalTriageCache.replacePendingCreates(remaining)
+    }
+
+    private suspend fun syncPendingOverrides() {
+        val pending = LocalTriageCache.pendingOverrides()
+        if (pending.isEmpty()) return
+
+        val remaining = mutableListOf<com.fairtriage.core.PendingOverrideAction>()
+        pending.forEach { action ->
+            if (action.patientId < 0) {
+                remaining += action
+                return@forEach
+            }
+            val synced = runCatching {
+                client.post("$BASE_URL/patients/${action.patientId}/override") {
+                    setBody(action.request)
+                }
+            }.isSuccess
+            if (!synced) remaining += action
+        }
+        LocalTriageCache.replacePendingOverrides(remaining)
+    }
+
+    private suspend fun syncPendingCompletions() {
+        val pending = LocalTriageCache.pendingCompletions()
+        if (pending.isEmpty()) return
+
+        val remaining = mutableListOf<Int>()
+        pending.forEach { patientId ->
+            if (patientId < 0) {
+                remaining += patientId
+                return@forEach
+            }
+            val synced = runCatching {
+                client.post("$BASE_URL/patients/$patientId/complete")
+            }.isSuccess
+            if (!synced) remaining += patientId
+        }
+        LocalTriageCache.replacePendingCompletions(remaining)
     }
 }

@@ -169,6 +169,22 @@ class DashboardScreen : Screen {
                             iconTint = Color(0xFF475569),
                             onClick = { navigator.push(LogsScreen()) }
                         )
+                        ActionCard(
+                            title = "Sync center",
+                            subtitle = "Offline cache & pending actions",
+                            icon = Icons.Default.CloudSync,
+                            iconBg = FairColors.WarningBg,
+                            iconTint = FairColors.WarningBorder,
+                            onClick = { navigator.push(SyncCenterScreen()) }
+                        )
+                        ActionCard(
+                            title = "System policy",
+                            subtitle = "Safety, fairness & privacy rules",
+                            icon = Icons.Default.Policy,
+                            iconBg = FairColors.InfoBlueBg,
+                            iconTint = FairColors.InfoBlueText,
+                            onClick = { navigator.push(SystemPolicyScreen()) }
+                        )
                     }
                 }
 

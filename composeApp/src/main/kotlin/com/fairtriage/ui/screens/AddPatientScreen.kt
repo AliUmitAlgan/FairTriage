@@ -1,5 +1,8 @@
 package com.fairtriage.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +16,7 @@ import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -57,7 +61,15 @@ class AddPatientScreen : Screen {
         var selectedChronicConditions by remember { mutableStateOf(setOf<String>()) }
         var chronicNote by remember { mutableStateOf("") }
         var mockImageScore by remember { mutableStateOf(0.0f) }
+        var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
         var showErrors by remember { mutableStateOf(false) }
+        val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                selectedImageUri = uri
+                val normalized = ((uri.toString().hashCode() and Int.MAX_VALUE) % 86 + 10) / 100f
+                mockImageScore = normalized.coerceIn(0.1f, 0.95f)
+            }
+        }
         val symptomGroups = remember {
             listOf(
                 ClinicalOptionGroup(
@@ -363,6 +375,26 @@ class AddPatientScreen : Screen {
                 item {
                     StandardCard {
                         SectionCardTitle("Image analysis (mock)", Icons.Default.Camera)
+                        OutlinedButton(
+                            onClick = { imagePicker.launch("image/*") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, FairColors.InfoBlueBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = FairColors.InfoBlueText)
+                        ) {
+                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (selectedImageUri == null) "Upload clinical image" else "Image selected - replace")
+                        }
+                        if (selectedImageUri != null) {
+                            Text(
+                                text = "Local edge image estimate generated from selected image. Backend receives normalized image score.",
+                                style = FairTypography.LabelSmall,
+                                color = FairColors.TextSecondary,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
                         val mockPercent = (mockImageScore * 100).roundToInt()
                         val imgColor = when {
                             mockPercent < 30 -> FairColors.StableFill

@@ -3,9 +3,19 @@ package com.fairtriage.core
 import android.content.SharedPreferences
 import com.fairtriage.model.CreatePatientRequest
 import com.fairtriage.model.DecisionLog
+import com.fairtriage.model.OverrideRequest
 import com.fairtriage.model.Patient
+import java.time.Instant
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+
+@Serializable
+data class PendingOverrideAction(
+    val patientId: Int,
+    val request: OverrideRequest
+)
 
 object LocalTriageCache {
     private const val PREFS = "fairtriage_local_first_cache"
@@ -13,6 +23,8 @@ object LocalTriageCache {
     private const val KEY_QUEUE = "queue"
     private const val KEY_LOGS = "logs"
     private const val KEY_PENDING_CREATES = "pending_creates"
+    private const val KEY_PENDING_OVERRIDES = "pending_overrides"
+    private const val KEY_PENDING_COMPLETIONS = "pending_completions"
     private const val KEY_LAST_SYNC = "last_sync"
     private const val KEY_PRIVACY_CONSENT = "privacy_consent"
 
@@ -47,7 +59,7 @@ object LocalTriageCache {
         val raw = prefs.getString(KEY_LOGS, null) ?: return emptyList()
         return runCatching {
             json.decodeFromString(ListSerializer(DecisionLog.serializer()), raw)
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList<DecisionLog>())
     }
 
     fun addPendingCreate(request: CreatePatientRequest) {
@@ -61,6 +73,11 @@ object LocalTriageCache {
         )
         cachePatients((cachedPatients() + localPatient).distinctBy { it.id })
         cacheQueue((cachedQueue() + localPatient).distinctBy { it.id })
+        addLocalLog(
+            patientId = localPatient.id,
+            actionType = "created",
+            explanation = "Offline patient record created and queued for backend synchronization."
+        )
     }
 
     fun pendingCreates(): List<CreatePatientRequest> {
@@ -75,6 +92,62 @@ object LocalTriageCache {
     }
 
     fun pendingCreateCount(): Int = pendingCreates().size
+
+    fun addPendingOverride(patientId: Int, request: OverrideRequest) {
+        val pending = pendingOverrides() + PendingOverrideAction(patientId, request)
+        put(KEY_PENDING_OVERRIDES, json.encodeToString(ListSerializer(PendingOverrideAction.serializer()), pending))
+        updateCachedPatient(patientId) { patient ->
+            patient.copy(
+                triage_level = request.new_triage_level,
+                overridden_by_doctor = true,
+                doctor_override_reason = request.override_reason,
+                decision_rationale = "Offline doctor override pending backend synchronization. Reasons: ${request.override_reason}"
+            )
+        }
+        addLocalLog(
+            patientId = patientId,
+            actionType = "doctor_override",
+            explanation = "Offline override queued: ${request.override_reason}"
+        )
+    }
+
+    fun pendingOverrides(): List<PendingOverrideAction> {
+        val raw = prefs.getString(KEY_PENDING_OVERRIDES, null) ?: return emptyList()
+        return runCatching {
+            json.decodeFromString(ListSerializer(PendingOverrideAction.serializer()), raw)
+        }.getOrDefault(emptyList())
+    }
+
+    fun replacePendingOverrides(pending: List<PendingOverrideAction>) {
+        put(KEY_PENDING_OVERRIDES, json.encodeToString(ListSerializer(PendingOverrideAction.serializer()), pending))
+    }
+
+    fun addPendingCompletion(patientId: Int) {
+        val pending = (pendingCompletions() + patientId).distinct()
+        put(KEY_PENDING_COMPLETIONS, json.encodeToString(ListSerializer(Int.serializer()), pending))
+        updateCachedPatient(patientId) { patient ->
+            patient.copy(status = "completed", queue_position = 0)
+        }
+        cacheQueue(cachedQueue().filterNot { it.id == patientId })
+        addLocalLog(
+            patientId = patientId,
+            actionType = "completed",
+            explanation = "Offline completion queued for backend synchronization."
+        )
+    }
+
+    fun pendingCompletions(): List<Int> {
+        val raw = prefs.getString(KEY_PENDING_COMPLETIONS, null) ?: return emptyList()
+        return runCatching {
+            json.decodeFromString(ListSerializer(Int.serializer()), raw)
+        }.getOrDefault(emptyList())
+    }
+
+    fun replacePendingCompletions(pending: List<Int>) {
+        put(KEY_PENDING_COMPLETIONS, json.encodeToString(ListSerializer(Int.serializer()), pending))
+    }
+
+    fun pendingActionCount(): Int = pendingCreateCount() + pendingOverrides().size + pendingCompletions().size
 
     fun lastSyncMillis(): Long = prefs.getLong(KEY_LAST_SYNC, 0L)
 
@@ -94,6 +167,23 @@ object LocalTriageCache {
     private fun nextOfflinePatientId(): Int {
         val minExistingId = (cachedPatients() + cachedQueue()).minOfOrNull { it.id } ?: 0
         return if (minExistingId < 0) minExistingId - 1 else -1
+    }
+
+    private fun updateCachedPatient(patientId: Int, transform: (Patient) -> Patient) {
+        cachePatients(cachedPatients().map { if (it.id == patientId) transform(it) else it })
+        cacheQueue(cachedQueue().map { if (it.id == patientId) transform(it) else it })
+    }
+
+    private fun addLocalLog(patientId: Int, actionType: String, explanation: String) {
+        val nextId = (cachedLogs().minOfOrNull { it.id } ?: 0).let { if (it < 0) it - 1 else -1 }
+        val log = DecisionLog(
+            id = nextId,
+            patient_id = patientId,
+            action_type = actionType,
+            explanation = explanation,
+            created_at = Instant.now().toString()
+        )
+        cacheLogs(listOf(log) + cachedLogs())
     }
 
     private fun markSynced() {
