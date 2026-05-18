@@ -91,7 +91,7 @@ class QueueScreen : Screen {
             ) {
                 Text("Patient Queue", style = FairTypography.TitleLarge.copy(fontSize = 16.sp), color = FairColors.NavyText)
                 Spacer(modifier = Modifier.height(2.dp))
-                Text("Sorted by AI priority score - live clinical queue", style = FairTypography.LabelSmall, color = Color(0x7394D2EC))
+                Text("Sorted by safety rank, fairness constraints, priority score, and arrival time", style = FairTypography.LabelSmall, color = Color(0x7394D2EC))
 
                 if (state is ScreenState.Success) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -154,6 +154,7 @@ class QueueScreen : Screen {
 private fun QueueStatusBanner(patients: List<Patient>) {
     val criticalCount = patients.count { it.triage_level.equals("Critical", ignoreCase = true) }
     val urgentCount = patients.count { it.triage_level.equals("Urgent", ignoreCase = true) }
+    val maxWaitCount = patients.count { (it.waiting_time_factor ?: 0.0) >= 20.0 }
     val message: String
     val accent: Color
     val background: Color
@@ -161,10 +162,20 @@ private fun QueueStatusBanner(patients: List<Patient>) {
 
     when {
         criticalCount > 0 -> {
-            message = "$criticalCount critical patient(s) need immediate review"
+            message = if (maxWaitCount > 0) {
+                "$criticalCount critical patient(s) need immediate review • $maxWaitCount max-waiting alert"
+            } else {
+                "$criticalCount critical patient(s) need immediate review"
+            }
             accent = FairColors.CriticalFill
             background = Color(0x26DC2626)
             border = Color(0x4DDC2626)
+        }
+        maxWaitCount > 0 -> {
+            message = "$maxWaitCount patient(s) reached maximum waiting constraint"
+            accent = FairColors.WarningBorder
+            background = FairColors.WarningBg
+            border = Color(0x66F9A825)
         }
         urgentCount > 0 -> {
             message = "$urgentCount urgent patient(s) are waiting"
@@ -193,7 +204,7 @@ private fun QueueStatusBanner(patients: List<Patient>) {
         Text(
             text = message,
             style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium),
-            color = Color.White
+            color = if (maxWaitCount > 0 && criticalCount == 0) FairColors.WarningText else Color.White
         )
     }
 }

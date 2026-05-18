@@ -247,6 +247,7 @@ private fun PatientDetailContent(
                 }
 
                 DecisionRationaleCard(patient)
+                ProductLogicCard(patient)
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
@@ -289,6 +290,8 @@ private fun PatientDetailContent(
 
 @Composable
 private fun DecisionRationaleCard(patient: Patient) {
+    val explanationBullets = buildExplanationBullets(patient)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -316,6 +319,28 @@ private fun DecisionRationaleCard(patient: Patient) {
                     lineHeight = 18.sp
                 )
 
+                if (explanationBullets.isNotEmpty()) {
+                    HorizontalDivider(color = FairColors.InfoBlueBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        "WHY THIS TRIAGE?",
+                        style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = FairColors.InfoBlueText
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    explanationBullets.forEach { bullet ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                            Text("•", color = FairColors.InfoBlueText, fontSize = 13.sp, modifier = Modifier.padding(end = 6.dp))
+                            Text(
+                                text = bullet,
+                                color = FairColors.InfoBlueDark,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
                 if (patient.overridden_by_doctor && !patient.doctor_override_reason.isNullOrEmpty()) {
                     HorizontalDivider(color = FairColors.InfoBlueBorder, modifier = Modifier.padding(vertical = 8.dp))
                     Text(
@@ -328,6 +353,80 @@ private fun DecisionRationaleCard(patient: Patient) {
             }
         }
     }
+}
+
+@Composable
+private fun ProductLogicCard(patient: Patient) {
+    StandardCard {
+        SectionCardTitle("FairTriage model policy", Icons.Default.Info)
+        ProductLogicRow("Hybrid scoring", "Risk = 45% symptoms + 25% image + 30% history")
+        SoftDivider()
+        ProductLogicRow("Safety rules", "Critical indicators can only escalate priority, never downgrade it")
+        SoftDivider()
+        ProductLogicRow("Fairness", "Waiting time increases final priority and activates a max-waiting review boost")
+        SoftDivider()
+        ProductLogicRow("Doctor control", if (patient.overridden_by_doctor) "Doctor override is active and logged" else "Doctor can override with a required clinical reason")
+    }
+}
+
+@Composable
+private fun ProductLogicRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium), color = FairColors.TextPrimary)
+        Text(
+            value,
+            style = FairTypography.LabelSmall,
+            color = FairColors.TextSecondary,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).padding(start = 12.dp)
+        )
+    }
+}
+
+private fun buildExplanationBullets(patient: Patient): List<String> {
+    val bullets = mutableListOf<String>()
+    val level = patient.triage_level ?: "Stable"
+    val risk = formatScore(patient.clinical_risk_score)
+    val priority = formatScore(patient.final_priority_score)
+    bullets += "$level assigned from clinical risk score $risk and final priority score $priority."
+
+    if (patient.heart_rate > 130) {
+        bullets += "Heart rate above 130 bpm triggered the safety escalation rule."
+    } else if (patient.heart_rate > 100) {
+        bullets += "Elevated heart rate increased symptom severity."
+    }
+
+    if (patient.blood_pressure_systolic < 90) {
+        bullets += "Systolic blood pressure below 90 mmHg triggered Critical safety protection."
+    } else if (patient.blood_pressure_systolic > 140) {
+        bullets += "Elevated systolic blood pressure contributed to symptom risk."
+    }
+
+    if (patient.pain_level >= 9 && patient.fever) {
+        bullets += "Pain level ${patient.pain_level}/10 with fever triggered an Urgent safety rule."
+    } else if (patient.pain_level >= 7) {
+        bullets += "High pain level contributed to the symptom score."
+    }
+
+    if (patient.fever) {
+        bullets += "Fever increased the symptom risk score."
+    }
+
+    if (patient.has_chronic_disease) {
+        bullets += "Medical history increased risk because chronic disease was selected."
+    }
+
+    val waitFactor = patient.waiting_time_factor ?: 0.0
+    when {
+        waitFactor >= 20.0 -> bullets += "Maximum waiting-time factor is reached, so fairness review boost is active in queue sorting."
+        waitFactor > 0.0 -> bullets += "Waiting time added ${formatWaitFactor(waitFactor)} to prevent unfair delay."
+    }
+
+    if (patient.overridden_by_doctor) {
+        bullets += "Doctor override is active; this decision is stored in the audit log."
+    }
+
+    return bullets.take(7)
 }
 
 @Composable
