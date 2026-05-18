@@ -54,7 +54,8 @@ class AddPatientScreen : Screen {
         var sysBPStr by remember { mutableStateOf("") }
         var diaBPStr by remember { mutableStateOf("") }
         var hasChronic by remember { mutableStateOf(false) }
-        var chronicDesc by remember { mutableStateOf("") }
+        var selectedChronicConditions by remember { mutableStateOf(setOf<String>()) }
+        var chronicNote by remember { mutableStateOf("") }
         var mockImageScore by remember { mutableStateOf(0.0f) }
         var showErrors by remember { mutableStateOf(false) }
         val symptomGroups = remember {
@@ -74,6 +75,22 @@ class AddPatientScreen : Screen {
                 ClinicalOptionGroup(
                     title = "General risk signs",
                     options = listOf("Bleeding", "Dehydration", "Severe fatigue", "Worsening symptoms", "Other clinical concern")
+                )
+            )
+        }
+        val chronicGroups = remember {
+            listOf(
+                ClinicalOptionGroup(
+                    title = "High-risk chronic disease",
+                    options = listOf("Heart disease", "Kidney disease", "Cancer treatment", "Immunosuppressed", "Pregnancy risk")
+                ),
+                ClinicalOptionGroup(
+                    title = "Moderate-risk condition",
+                    options = listOf("Diabetes", "Hypertension", "Asthma or COPD", "Neurologic disease")
+                ),
+                ClinicalOptionGroup(
+                    title = "Ongoing care context",
+                    options = listOf("Uses blood thinners", "Recent surgery", "Frequent ED visits", "Medication allergy")
                 )
             )
         }
@@ -218,12 +235,18 @@ class AddPatientScreen : Screen {
                         SectionCardTitle("Vital signs", Icons.Default.Favorite)
                         val hr = heartRateStr.toIntOrNull()
                         val hrError = showErrors && (hr == null || hr !in 30..250)
+                        val hrStatus = heartRateStatus(hr)
                         OutlinedTextField(
                             value = heartRateStr, onValueChange = { heartRateStr = it },
                             label = { Text("Heart rate (30-250)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(), isError = hrError, shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth(), isError = hrError, shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (hrError) FairColors.DangerRed else hrStatus.color,
+                                unfocusedBorderColor = if (hrError) FairColors.DangerRed else hrStatus.color
+                            )
                         )
                         if (hrError) Text("Heart rate must be between 30 and 250", color = FairColors.DangerRed, fontSize = 12.sp)
+                        VitalSignalStatusChip(label = "Heart rate", status = hrStatus)
 
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -231,17 +254,32 @@ class AddPatientScreen : Screen {
                             val sysError = showErrors && (sys == null || sys !in 50..250)
                             val dia = diaBPStr.toIntOrNull()
                             val diaError = showErrors && dia == null
+                            val sysStatus = systolicStatus(sys)
+                            val diaStatus = diastolicStatus(dia)
                             OutlinedTextField(
                                 value = sysBPStr, onValueChange = { sysBPStr = it },
                                 label = { Text("Systolic BP (50-250)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f), isError = sysError, shape = RoundedCornerShape(12.dp)
+                                modifier = Modifier.weight(1f), isError = sysError, shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = if (sysError) FairColors.DangerRed else sysStatus.color,
+                                    unfocusedBorderColor = if (sysError) FairColors.DangerRed else sysStatus.color
+                                )
                             )
 
                             OutlinedTextField(
                                 value = diaBPStr, onValueChange = { diaBPStr = it },
                                 label = { Text("Diastolic BP") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f), isError = diaError, shape = RoundedCornerShape(12.dp)
+                                modifier = Modifier.weight(1f), isError = diaError, shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = if (diaError) FairColors.DangerRed else diaStatus.color,
+                                    unfocusedBorderColor = if (diaError) FairColors.DangerRed else diaStatus.color
+                                )
                             )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            VitalSignalStatusChip(label = "Systolic", status = systolicStatus(sysBPStr.toIntOrNull()), modifier = Modifier.weight(1f))
+                            VitalSignalStatusChip(label = "Diastolic", status = diastolicStatus(diaBPStr.toIntOrNull()), modifier = Modifier.weight(1f))
                         }
                         val sys = sysBPStr.toIntOrNull()
                         val dia = diaBPStr.toIntOrNull()
@@ -260,14 +298,63 @@ class AddPatientScreen : Screen {
                         SectionCardTitle("Medical history", Icons.Default.History)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("Has chronic disease", style = FairTypography.BodyLarge)
-                            Switch(checked = hasChronic, onCheckedChange = { hasChronic = it })
+                            Switch(
+                                checked = hasChronic,
+                                onCheckedChange = {
+                                    hasChronic = it
+                                    if (!it) {
+                                        selectedChronicConditions = emptySet()
+                                        chronicNote = ""
+                                    }
+                                }
+                            )
                         }
                         AnimatedVisibility(visible = hasChronic) {
-                            OutlinedTextField(
-                                value = chronicDesc, onValueChange = { chronicDesc = it },
-                                label = { Text("Disease description") }, minLines = 2,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(12.dp)
-                            )
+                            Column(modifier = Modifier.padding(top = 10.dp)) {
+                                Text(
+                                    text = "Select relevant history flags",
+                                    style = FairTypography.BodyMedium,
+                                    color = FairColors.TextSecondary
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                chronicGroups.forEachIndexed { index, group ->
+                                    ClinicalOptionSection(
+                                        title = group.title,
+                                        options = group.options,
+                                        selectedOptions = selectedChronicConditions,
+                                        selectedColor = when (index) {
+                                            0 -> FairColors.CriticalFill
+                                            1 -> FairColors.UrgentFill
+                                            else -> FairColors.StableFill
+                                        },
+                                        selectedBg = when (index) {
+                                            0 -> FairColors.CriticalTint
+                                            1 -> FairColors.UrgentTint
+                                            else -> FairColors.StableTint
+                                        },
+                                        onToggle = { option ->
+                                            selectedChronicConditions = if (option in selectedChronicConditions) {
+                                                selectedChronicConditions - option
+                                            } else {
+                                                selectedChronicConditions + option
+                                            }
+                                        }
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                }
+                                val chronicError = showErrors && hasChronic && selectedChronicConditions.isEmpty() && chronicNote.isBlank()
+                                if (chronicError) {
+                                    Text("Select at least one history flag or add a note", color = FairColors.DangerRed, fontSize = 12.sp)
+                                }
+                                OutlinedTextField(
+                                    value = chronicNote,
+                                    onValueChange = { chronicNote = it },
+                                    label = { Text("Additional history note (optional)") },
+                                    minLines = 2,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -312,6 +399,11 @@ class AddPatientScreen : Screen {
                             val dia = diaBPStr.toIntOrNull() ?: return@Button
                             if (fullName.isBlank()) return@Button
                             if (selectedSymptoms.isEmpty()) return@Button
+                            if (hasChronic && selectedChronicConditions.isEmpty() && chronicNote.isBlank()) return@Button
+                            val chronicDescription = buildList {
+                                addAll(selectedChronicConditions)
+                                if (chronicNote.isNotBlank()) add("Additional note: ${chronicNote.trim()}")
+                            }.joinToString("; ")
                             
                             val req = CreatePatientRequest(
                                 full_name = fullName,
@@ -324,7 +416,7 @@ class AddPatientScreen : Screen {
                                 blood_pressure_systolic = sys,
                                 blood_pressure_diastolic = dia,
                                 has_chronic_disease = hasChronic,
-                                chronic_disease_description = if (hasChronic) chronicDesc else null,
+                                chronic_disease_description = if (hasChronic) chronicDescription else null,
                                 image_score = mockImageScore.toDouble()
                             )
                             screenModel.submit(req)
@@ -356,6 +448,8 @@ class AddPatientScreen : Screen {
         title: String,
         options: List<String>,
         selectedOptions: Set<String>,
+        selectedColor: Color = FairColors.InfoBlueText,
+        selectedBg: Color = FairColors.InfoBlueBg,
         onToggle: (String) -> Unit
     ) {
         Text(
@@ -371,6 +465,8 @@ class AddPatientScreen : Screen {
                         ClinicalOptionCard(
                             text = option,
                             selected = option in selectedOptions,
+                            selectedColor = selectedColor,
+                            selectedBg = selectedBg,
                             onClick = { onToggle(option) },
                             modifier = Modifier.weight(1f)
                         )
@@ -387,6 +483,8 @@ class AddPatientScreen : Screen {
     private fun ClinicalOptionCard(
         text: String,
         selected: Boolean,
+        selectedColor: Color = FairColors.InfoBlueText,
+        selectedBg: Color = FairColors.InfoBlueBg,
         onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
@@ -394,16 +492,16 @@ class AddPatientScreen : Screen {
             modifier = modifier
                 .heightIn(min = 46.dp)
                 .clickable(onClick = onClick)
-                .background(if (selected) FairColors.InfoBlueBg else Color.White, RoundedCornerShape(12.dp))
-                .border(1.dp, if (selected) FairColors.InfoBlueBorder else FairColors.Border, RoundedCornerShape(12.dp))
+                .background(if (selected) selectedBg else Color.White, RoundedCornerShape(12.dp))
+                .border(1.dp, if (selected) selectedColor else FairColors.Border, RoundedCornerShape(12.dp))
                 .padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(20.dp)
-                    .background(if (selected) FairColors.InfoBlueText else Color.White, RoundedCornerShape(6.dp))
-                    .border(1.dp, if (selected) FairColors.InfoBlueText else FairColors.Border, RoundedCornerShape(6.dp)),
+                    .background(if (selected) selectedColor else Color.White, RoundedCornerShape(6.dp))
+                    .border(1.dp, if (selected) selectedColor else FairColors.Border, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 if (selected) {
@@ -413,9 +511,56 @@ class AddPatientScreen : Screen {
             Spacer(Modifier.width(8.dp))
             Text(
                 text = text,
-                color = if (selected) FairColors.InfoBlueText else FairColors.TextPrimary,
+                color = if (selected) selectedColor else FairColors.TextPrimary,
                 style = FairTypography.BodyMedium.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
             )
+        }
+    }
+
+    private data class VitalSignalStatus(
+        val text: String,
+        val color: Color,
+        val tint: Color
+    )
+
+    private fun heartRateStatus(value: Int?): VitalSignalStatus = when {
+        value == null -> VitalSignalStatus("Not entered", FairColors.Border, FairColors.Surface)
+        value in 60..100 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
+        value in 50..59 || value in 101..120 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
+        else -> VitalSignalStatus("High concern", FairColors.CriticalFill, FairColors.CriticalTint)
+    }
+
+    private fun systolicStatus(value: Int?): VitalSignalStatus = when {
+        value == null -> VitalSignalStatus("Not entered", FairColors.Border, FairColors.Surface)
+        value in 90..120 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
+        value in 80..89 || value in 121..159 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
+        else -> VitalSignalStatus("High concern", FairColors.CriticalFill, FairColors.CriticalTint)
+    }
+
+    private fun diastolicStatus(value: Int?): VitalSignalStatus = when {
+        value == null -> VitalSignalStatus("Not entered", FairColors.Border, FairColors.Surface)
+        value in 60..80 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
+        value in 50..59 || value in 81..99 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
+        else -> VitalSignalStatus("High concern", FairColors.CriticalFill, FairColors.CriticalTint)
+    }
+
+    @Composable
+    private fun VitalSignalStatusChip(
+        label: String,
+        status: VitalSignalStatus,
+        modifier: Modifier = Modifier
+    ) {
+        Row(
+            modifier = modifier
+                .padding(top = 6.dp)
+                .background(status.tint, RoundedCornerShape(10.dp))
+                .border(1.dp, status.color.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = FairTypography.LabelSmall, color = FairColors.TextSecondary)
+            Text(status.text, style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium), color = status.color)
         }
     }
 }
