@@ -9,6 +9,7 @@ from app import models, schemas
 from app.triage_engine import (
     build_doctor_override_rationale,
     calculate_patient_scores,
+    infer_doctor_override_level,
     recalculate_waiting_queue,
 )
 
@@ -244,8 +245,13 @@ async def override_patient_triage(
     old_priority_score = patient.final_priority_score
 
     override_reason = payload.normalized_override_reason
+    derived_triage_level = infer_doctor_override_level(
+        patient,
+        override_reason,
+        requested_level=payload.new_triage_level,
+    )
 
-    patient.triage_level = payload.new_triage_level
+    patient.triage_level = derived_triage_level
     patient.overridden_by_doctor = True
     patient.doctor_override_reason = override_reason
     patient.decision_rationale = build_doctor_override_rationale(
@@ -261,7 +267,7 @@ async def override_patient_triage(
         session,
         patient.id,
         "doctor_override",
-        f"Doctor override applied with selected clinical reasons: {override_reason}",
+        f"Doctor override review applied. Backend derived {derived_triage_level} from selected clinical reasons: {override_reason}",
         old_triage_level=old_triage_level,
         new_triage_level=patient.triage_level,
         old_priority_score=old_priority_score,

@@ -28,6 +28,29 @@ HIGH_RISK_HISTORY_KEYWORDS = {
     "diabetes": 10,
     "asthma or copd": 10,
 }
+OVERRIDE_CRITICAL_KEYWORDS = (
+    "chest pain",
+    "cardiac concern",
+    "respiratory distress",
+    "neurologic red flag",
+    "clinical deterioration",
+    "severe pain escalation",
+)
+OVERRIDE_URGENT_KEYWORDS = (
+    "abnormal heart rate",
+    "abnormal blood pressure",
+    "persistent fever",
+    "infection concern",
+    "pain level increased",
+    "uncontrolled",
+    "high-risk chronic disease",
+    "frailty",
+    "waiting time",
+    "underestimates bedside risk",
+    "bedside assessment",
+    "patient safety precaution",
+    "faster physician review",
+)
 
 
 def ensure_utc(value: datetime) -> datetime:
@@ -252,11 +275,42 @@ def build_doctor_override_rationale(
 ) -> str:
     """Build a rationale when a clinician overrides the algorithmic triage level."""
     return (
-        f"Patient assigned {triage_level} by doctor override. "
+        f"Patient assigned {triage_level} by clinician override review. "
         f"{_format_override_reasons(override_reason)} "
         f"Clinical risk score is {clinical_risk_score:.1f}. "
         f"Waiting time factor is {waiting_time_factor:.1f}."
     )
+
+
+def infer_doctor_override_level(
+    patient: Any,
+    override_reason: str,
+    requested_level: str | None = None,
+) -> str:
+    """Infer the safest override level from selected bedside clinical reasons.
+
+    The mobile app no longer asks the clinician to manually choose Critical,
+    Urgent, or Stable. It submits structured bedside concerns, and the backend
+    derives the override level using the same safety-first ordering as the main
+    triage engine. Legacy clients may still send requested_level; it can only
+    escalate, never make the derived decision less safe.
+    """
+    baseline_level, _ = determine_triage_level(patient, _read(patient, "clinical_risk_score"))
+    inferred_level = "Stable"
+    normalized_reason = (override_reason or "").lower()
+
+    if _read(patient, "heart_rate") > 130 or _read(patient, "blood_pressure_systolic") < 90:
+        inferred_level = _escalate(inferred_level, "Critical")
+
+    if _contains_any(normalized_reason, OVERRIDE_CRITICAL_KEYWORDS):
+        inferred_level = _escalate(inferred_level, "Critical")
+    elif _contains_any(normalized_reason, OVERRIDE_URGENT_KEYWORDS):
+        inferred_level = _escalate(inferred_level, "Urgent")
+
+    if requested_level:
+        inferred_level = _escalate(inferred_level, requested_level)
+
+    return _escalate(baseline_level, inferred_level)
 
 
 def calculate_patient_scores(

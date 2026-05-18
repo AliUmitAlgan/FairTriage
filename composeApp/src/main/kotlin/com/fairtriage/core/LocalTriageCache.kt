@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import androidx.core.content.edit
 
 @Serializable
 data class PendingOverrideAction(
@@ -59,7 +60,7 @@ object LocalTriageCache {
         val raw = prefs.getString(KEY_LOGS, null) ?: return emptyList()
         return runCatching {
             json.decodeFromString(ListSerializer(DecisionLog.serializer()), raw)
-        }.getOrDefault(emptyList<DecisionLog>())
+        }.getOrDefault(emptyList())
     }
 
     fun addPendingCreate(request: CreatePatientRequest) {
@@ -98,10 +99,10 @@ object LocalTriageCache {
         put(KEY_PENDING_OVERRIDES, json.encodeToString(ListSerializer(PendingOverrideAction.serializer()), pending))
         updateCachedPatient(patientId) { patient ->
             patient.copy(
-                triage_level = request.new_triage_level,
+                triage_level = request.new_triage_level ?: patient.triage_level,
                 overridden_by_doctor = true,
                 doctor_override_reason = request.override_reason,
-                decision_rationale = "Offline doctor override pending backend synchronization. Reasons: ${request.override_reason}"
+                decision_rationale = "Offline doctor override pending backend synchronization. Backend will derive the final triage level from selected reasons: ${request.override_reason}"
             )
         }
         addLocalLog(
@@ -154,7 +155,7 @@ object LocalTriageCache {
     fun hasPrivacyConsent(): Boolean = prefs.getBoolean(KEY_PRIVACY_CONSENT, false)
 
     fun setPrivacyConsent(accepted: Boolean) {
-        prefs.edit().putBoolean(KEY_PRIVACY_CONSENT, accepted).apply()
+        prefs.edit { putBoolean(KEY_PRIVACY_CONSENT, accepted) }
     }
 
     private fun getPatients(key: String): List<Patient> {
@@ -187,10 +188,10 @@ object LocalTriageCache {
     }
 
     private fun markSynced() {
-        prefs.edit().putLong(KEY_LAST_SYNC, System.currentTimeMillis()).apply()
+        prefs.edit { putLong(KEY_LAST_SYNC, System.currentTimeMillis()) }
     }
 
     private fun put(key: String, value: String) {
-        prefs.edit().putString(key, value).apply()
+        prefs.edit { putString(key, value) }
     }
 }

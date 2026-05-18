@@ -91,7 +91,7 @@ class PatientUpdate(BaseModel):
 class DoctorOverrideRequest(BaseModel):
     """Payload for clinician triage-level overrides."""
 
-    new_triage_level: TriageLevel
+    new_triage_level: TriageLevel | None = None
     override_reason: str | None = Field(default=None, min_length=1, max_length=1000)
     override_reasons: list[str] = Field(default_factory=list, max_length=12)
 

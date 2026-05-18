@@ -186,6 +186,8 @@ class AddPatientScreen : Screen {
                                 title = group.title,
                                 options = group.options,
                                 selectedOptions = selectedSymptoms,
+                                optionColor = ::clinicalFindingColor,
+                                optionBg = ::clinicalFindingTint,
                                 onToggle = { option ->
                                     selectedSymptoms = if (option in selectedSymptoms) {
                                         selectedSymptoms - option
@@ -204,7 +206,7 @@ class AddPatientScreen : Screen {
                         OutlinedTextField(
                             value = clinicalNote,
                             onValueChange = { clinicalNote = it },
-                            label = { Text("Additional clinical note (optional)") },
+                            label = { Text("Clinical note") },
                             minLines = 2,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
@@ -245,61 +247,51 @@ class AddPatientScreen : Screen {
                 item {
                     StandardCard {
                         SectionCardTitle("Vital signs", Icons.Default.Favorite)
+                        Text(
+                            text = "Select the closest clinical range. The exact prototype value is sent to the backend for scoring.",
+                            style = FairTypography.BodyMedium,
+                            color = FairColors.TextSecondary
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        VitalOptionSection(
+                            title = "Heart rate",
+                            options = heartRateOptions(),
+                            selectedValue = heartRateStr.toIntOrNull(),
+                            onSelect = { option -> heartRateStr = option.value.toString() }
+                        )
                         val hr = heartRateStr.toIntOrNull()
                         val hrError = showErrors && (hr == null || hr !in 30..250)
-                        val hrStatus = heartRateStatus(hr)
-                        OutlinedTextField(
-                            value = heartRateStr, onValueChange = { heartRateStr = it },
-                            label = { Text("Heart rate (30-250)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(), isError = hrError, shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = if (hrError) FairColors.DangerRed else hrStatus.color,
-                                unfocusedBorderColor = if (hrError) FairColors.DangerRed else hrStatus.color
-                            )
+                        if (hrError) Text("Select a heart-rate category", color = FairColors.DangerRed, fontSize = 12.sp)
+
+                        Spacer(Modifier.height(14.dp))
+                        VitalOptionSection(
+                            title = "Systolic blood pressure",
+                            options = systolicOptions(),
+                            selectedValue = sysBPStr.toIntOrNull(),
+                            onSelect = { option -> sysBPStr = option.value.toString() }
                         )
-                        if (hrError) Text("Heart rate must be between 30 and 250", color = FairColors.DangerRed, fontSize = 12.sp)
-                        VitalSignalStatusChip(label = "Heart rate", status = hrStatus)
-
-                        Spacer(Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            val sys = sysBPStr.toIntOrNull()
-                            val sysError = showErrors && (sys == null || sys !in 50..250)
-                            val dia = diaBPStr.toIntOrNull()
-                            val diaError = showErrors && (dia == null || dia !in 30..180)
-                            val sysStatus = systolicStatus(sys)
-                            val diaStatus = diastolicStatus(dia)
-                            OutlinedTextField(
-                                value = sysBPStr, onValueChange = { sysBPStr = it },
-                                label = { Text("Systolic BP (50-250)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f), isError = sysError, shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = if (sysError) FairColors.DangerRed else sysStatus.color,
-                                    unfocusedBorderColor = if (sysError) FairColors.DangerRed else sysStatus.color
-                                )
-                            )
-
-                            OutlinedTextField(
-                                value = diaBPStr, onValueChange = { diaBPStr = it },
-                                label = { Text("Diastolic BP (30-180)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f), isError = diaError, shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = if (diaError) FairColors.DangerRed else diaStatus.color,
-                                    unfocusedBorderColor = if (diaError) FairColors.DangerRed else diaStatus.color
-                                )
-                            )
+                        val sys = sysBPStr.toIntOrNull()
+                        if (showErrors && (sys == null || sys !in 50..250)) {
+                            Text("Select a systolic BP category", color = FairColors.DangerRed, fontSize = 12.sp)
                         }
+
+                        Spacer(Modifier.height(14.dp))
+                        VitalOptionSection(
+                            title = "Diastolic blood pressure",
+                            options = diastolicOptions(),
+                            selectedValue = diaBPStr.toIntOrNull(),
+                            onSelect = { option -> diaBPStr = option.value.toString() }
+                        )
+                        val dia = diaBPStr.toIntOrNull()
+                        if (showErrors && (dia == null || dia !in 30..180)) {
+                            Text("Select a diastolic BP category", color = FairColors.DangerRed, fontSize = 12.sp)
+                        }
+
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            VitalSignalStatusChip(label = "Systolic", status = systolicStatus(sysBPStr.toIntOrNull()), modifier = Modifier.weight(1f))
-                            VitalSignalStatusChip(label = "Diastolic", status = diastolicStatus(diaBPStr.toIntOrNull()), modifier = Modifier.weight(1f))
-                        }
-                        val sys = sysBPStr.toIntOrNull()
-                        val dia = diaBPStr.toIntOrNull()
-                        if (showErrors && (sys == null || sys !in 50..250)) {
-                            Text("Systolic BP must be between 50 and 250", color = FairColors.DangerRed, fontSize = 12.sp)
-                        }
-                        if (showErrors && (dia == null || dia !in 30..180)) {
-                            Text("Diastolic BP must be between 30 and 180", color = FairColors.DangerRed, fontSize = 12.sp)
+                            VitalSignalStatusChip(label = "Heart", status = heartRateStatus(hr), modifier = Modifier.weight(1f))
+                            VitalSignalStatusChip(label = "Systolic", status = systolicStatus(sys), modifier = Modifier.weight(1f))
+                            VitalSignalStatusChip(label = "Diastolic", status = diastolicStatus(dia), modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -344,6 +336,20 @@ class AddPatientScreen : Screen {
                                             1 -> FairColors.UrgentTint
                                             else -> FairColors.StableTint
                                         },
+                                        optionColor = {
+                                            when (index) {
+                                                0 -> FairColors.CriticalFill
+                                                1 -> FairColors.UrgentFill
+                                                else -> FairColors.StableFill
+                                            }
+                                        },
+                                        optionBg = {
+                                            when (index) {
+                                                0 -> FairColors.CriticalTint
+                                                1 -> FairColors.UrgentTint
+                                                else -> FairColors.StableTint
+                                            }
+                                        },
                                         onToggle = { option ->
                                             selectedChronicConditions = if (option in selectedChronicConditions) {
                                                 selectedChronicConditions - option
@@ -361,7 +367,7 @@ class AddPatientScreen : Screen {
                                 OutlinedTextField(
                                     value = chronicNote,
                                     onValueChange = { chronicNote = it },
-                                    label = { Text("Additional history note (optional)") },
+                                    label = { Text("Additional history note") },
                                     minLines = 2,
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp)
@@ -476,6 +482,14 @@ class AddPatientScreen : Screen {
         val options: List<String>
     )
 
+    private data class VitalOption(
+        val title: String,
+        val subtitle: String,
+        val value: Int,
+        val color: Color,
+        val tint: Color
+    )
+
     @Composable
     private fun ClinicalOptionSection(
         title: String,
@@ -483,6 +497,8 @@ class AddPatientScreen : Screen {
         selectedOptions: Set<String>,
         selectedColor: Color = FairColors.InfoBlueText,
         selectedBg: Color = FairColors.InfoBlueBg,
+        optionColor: (String) -> Color = { selectedColor },
+        optionBg: (String) -> Color = { selectedBg },
         onToggle: (String) -> Unit
     ) {
         Text(
@@ -498,8 +514,9 @@ class AddPatientScreen : Screen {
                         ClinicalOptionCard(
                             text = option,
                             selected = option in selectedOptions,
-                            selectedColor = selectedColor,
-                            selectedBg = selectedBg,
+                            indicatorColor = optionColor(option),
+                            selectedColor = optionColor(option),
+                            selectedBg = optionBg(option),
                             onClick = { onToggle(option) },
                             modifier = Modifier.weight(1f)
                         )
@@ -516,6 +533,7 @@ class AddPatientScreen : Screen {
     private fun ClinicalOptionCard(
         text: String,
         selected: Boolean,
+        indicatorColor: Color = FairColors.InfoBlueText,
         selectedColor: Color = FairColors.InfoBlueText,
         selectedBg: Color = FairColors.InfoBlueBg,
         onClick: () -> Unit,
@@ -530,6 +548,13 @@ class AddPatientScreen : Screen {
                 .padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(24.dp)
+                    .background(indicatorColor, RoundedCornerShape(12.dp))
+            )
+            Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier
                     .size(20.dp)
@@ -550,30 +575,150 @@ class AddPatientScreen : Screen {
         }
     }
 
+    @Composable
+    private fun VitalOptionSection(
+        title: String,
+        options: List<VitalOption>,
+        selectedValue: Int?,
+        onSelect: (VitalOption) -> Unit
+    ) {
+        Text(
+            text = title,
+            style = FairTypography.LabelLarge,
+            color = FairColors.InfoBlueDark,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.chunked(2).forEach { rowOptions ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    rowOptions.forEach { option ->
+                        VitalOptionCard(
+                            option = option,
+                            selected = selectedValue == option.value,
+                            onClick = { onSelect(option) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (rowOptions.size == 1) {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun VitalOptionCard(
+        option: VitalOption,
+        selected: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        Column(
+            modifier = modifier
+                .heightIn(min = 72.dp)
+                .clickable(onClick = onClick)
+                .background(if (selected) option.tint else Color.White, RoundedCornerShape(12.dp))
+                .border(1.dp, if (selected) option.color else FairColors.Border, RoundedCornerShape(12.dp))
+                .padding(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(option.color, RoundedCornerShape(10.dp))
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    text = option.title,
+                    color = if (selected) option.color else FairColors.TextPrimary,
+                    style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium)
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(option.subtitle, style = FairTypography.LabelSmall, color = FairColors.TextSecondary)
+            Text("${option.value}", style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium), color = option.color)
+        }
+    }
+
+    private fun heartRateOptions(): List<VitalOption> = listOf(
+        VitalOption("Normal", "60-100 bpm", 82, FairColors.StableFill, FairColors.StableTint),
+        VitalOption("Watch high", "101-120 bpm", 112, FairColors.UrgentFill, FairColors.UrgentTint),
+        VitalOption("Watch low", "50-59 bpm", 55, FairColors.UrgentFill, FairColors.UrgentTint),
+        VitalOption("Critical high", ">130 bpm", 142, FairColors.CriticalFill, FairColors.CriticalTint),
+        VitalOption("Critical low", "<50 bpm", 42, FairColors.CriticalFill, FairColors.CriticalTint)
+    )
+
+    private fun systolicOptions(): List<VitalOption> = listOf(
+        VitalOption("Normal", "90-120 mmHg", 115, FairColors.StableFill, FairColors.StableTint),
+        VitalOption("Elevated", "121-159 mmHg", 145, FairColors.UrgentFill, FairColors.UrgentTint),
+        VitalOption("Borderline low", "90-99 mmHg", 95, FairColors.UrgentFill, FairColors.UrgentTint),
+        VitalOption("Severe high", ">=180 mmHg", 185, FairColors.CriticalFill, FairColors.CriticalTint),
+        VitalOption("Hypotension", "<90 mmHg", 85, FairColors.CriticalFill, FairColors.CriticalTint)
+    )
+
+    private fun diastolicOptions(): List<VitalOption> = listOf(
+        VitalOption("Normal", "60-80 mmHg", 75, FairColors.StableFill, FairColors.StableTint),
+        VitalOption("Elevated", "81-99 mmHg", 92, FairColors.UrgentFill, FairColors.UrgentTint),
+        VitalOption("Borderline low", "50-59 mmHg", 55, FairColors.UrgentFill, FairColors.UrgentTint),
+        VitalOption("Severe high", ">=110 mmHg", 115, FairColors.CriticalFill, FairColors.CriticalTint),
+        VitalOption("Very low", "<50 mmHg", 45, FairColors.CriticalFill, FairColors.CriticalTint)
+    )
+
+    private fun clinicalFindingColor(option: String): Color = when (option.lowercase()) {
+        "chest pain",
+        "shortness of breath",
+        "confusion",
+        "seizure concern",
+        "weakness or numbness",
+        "bleeding",
+        "severe localized pain",
+        "worsening symptoms" -> FairColors.CriticalFill
+        "abdominal pain",
+        "headache",
+        "trauma or injury",
+        "fever or chills",
+        "cough",
+        "nausea or vomiting",
+        "rash or swelling",
+        "dizziness or fainting",
+        "palpitations",
+        "dehydration",
+        "severe fatigue",
+        "other clinical concern" -> FairColors.UrgentFill
+        else -> FairColors.StableFill
+    }
+
+    private fun clinicalFindingTint(option: String): Color = when (clinicalFindingColor(option)) {
+        FairColors.CriticalFill -> FairColors.CriticalTint
+        FairColors.UrgentFill -> FairColors.UrgentTint
+        else -> FairColors.StableTint
+    }
+
     private data class VitalSignalStatus(
         val text: String,
         val color: Color,
         val tint: Color
     )
 
-    private fun heartRateStatus(value: Int?): VitalSignalStatus = when {
-        value == null -> VitalSignalStatus("Not entered", FairColors.Border, FairColors.Surface)
-        value in 60..100 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
-        value in 50..59 || value in 101..120 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
+    private fun heartRateStatus(value: Int?): VitalSignalStatus = when (value) {
+        null -> VitalSignalStatus("Select one", FairColors.Border, FairColors.Surface)
+        in 60..100 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
+        in 50..59, in 101..120 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
         else -> VitalSignalStatus("High concern", FairColors.CriticalFill, FairColors.CriticalTint)
     }
 
-    private fun systolicStatus(value: Int?): VitalSignalStatus = when {
-        value == null -> VitalSignalStatus("Not entered", FairColors.Border, FairColors.Surface)
-        value in 90..120 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
-        value in 80..89 || value in 121..159 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
+    private fun systolicStatus(value: Int?): VitalSignalStatus = when (value) {
+        null -> VitalSignalStatus("Select one", FairColors.Border, FairColors.Surface)
+        in 90..120 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
+        in 80..89, in 121..159 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
         else -> VitalSignalStatus("High concern", FairColors.CriticalFill, FairColors.CriticalTint)
     }
 
-    private fun diastolicStatus(value: Int?): VitalSignalStatus = when {
-        value == null -> VitalSignalStatus("Not entered", FairColors.Border, FairColors.Surface)
-        value in 60..80 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
-        value in 50..59 || value in 81..99 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
+    private fun diastolicStatus(value: Int?): VitalSignalStatus = when (value) {
+        null -> VitalSignalStatus("Select one", FairColors.Border, FairColors.Surface)
+        in 60..80 -> VitalSignalStatus("Normal", FairColors.StableFill, FairColors.StableTint)
+        in 50..59, in 81..99 -> VitalSignalStatus("Watch", FairColors.UrgentFill, FairColors.UrgentTint)
         else -> VitalSignalStatus("High concern", FairColors.CriticalFill, FairColors.CriticalTint)
     }
 

@@ -38,7 +38,6 @@ data class OverrideDecisionScreen(
         val actionState by screenModel.submitState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        var selectedLevel by remember { mutableStateOf(currentTriageLevel.ifBlank { "Stable" }) }
         var selectedReasons by remember { mutableStateOf(setOf<String>()) }
         var showErrors by remember { mutableStateOf(false) }
         val reasonGroups = remember {
@@ -85,10 +84,7 @@ data class OverrideDecisionScreen(
 
         LaunchedEffect(actionState) {
             when (val currentAction = actionState) {
-                SubmitState.Success -> {
-                    snackbarHostState.showSnackbar("Override applied")
-                    navigator.pop()
-                }
+                SubmitState.Success -> navigator.pop()
                 is SubmitState.Error -> {
                     snackbarHostState.showSnackbar(currentAction.message)
                     screenModel.clearError()
@@ -141,12 +137,25 @@ data class OverrideDecisionScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Select new triage level", style = FairTypography.LabelLarge, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 10.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    LevelSelectorCard("Critical", selectedLevel, FairColors.CriticalFill, Modifier.weight(1f)) { selectedLevel = "Critical" }
-                    LevelSelectorCard("Urgent", selectedLevel, FairColors.UrgentFill, Modifier.weight(1f)) { selectedLevel = "Urgent" }
-                    LevelSelectorCard("Stable", selectedLevel, FairColors.StableFill, Modifier.weight(1f)) { selectedLevel = "Stable" }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = FairColors.InfoBlueBg),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, FairColors.InfoBlueBorder)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "Backend will determine the safest triage level",
+                            style = FairTypography.BodyMedium.copy(fontWeight = FontWeight.Medium),
+                            color = FairColors.InfoBlueDark
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Select the bedside clinical reasons. FairTriage will re-score the case and log the resulting override level automatically.",
+                            style = FairTypography.LabelSmall,
+                            color = FairColors.TextSecondary
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -189,7 +198,7 @@ data class OverrideDecisionScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val isConfirmEnabled = selectedLevel.isNotEmpty() && selectedReasons.isNotEmpty()
+                val isConfirmEnabled = selectedReasons.isNotEmpty()
                 Button(
                     onClick = {
                         showErrors = true
@@ -198,7 +207,6 @@ data class OverrideDecisionScreen(
                             screenModel.submit(
                                 patientId,
                                 com.fairtriage.model.OverrideRequest(
-                                    new_triage_level = selectedLevel,
                                     override_reasons = reasons,
                                     override_reason = reasons.joinToString("; ")
                                 )
@@ -228,29 +236,6 @@ data class OverrideDecisionScreen(
         val title: String,
         val options: List<String>
     )
-
-    @Composable
-    private fun LevelSelectorCard(level: String, selectedLevel: String, fillColor: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
-        val isSelected = level == selectedLevel
-        Box(
-            modifier = modifier
-                .clickable(onClick = onClick)
-                .background(if (isSelected) fillColor else Color.White, RoundedCornerShape(12.dp))
-                .border(1.dp, if (isSelected) fillColor else FairColors.Border, RoundedCornerShape(12.dp))
-                .padding(vertical = 12.dp, horizontal = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isSelected) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(level, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                }
-            } else {
-                Text(level, color = Color(0xFF64748B), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
 
     @Composable
     private fun ReasonOptionCard(text: String, selected: Boolean, onClick: () -> Unit) {
