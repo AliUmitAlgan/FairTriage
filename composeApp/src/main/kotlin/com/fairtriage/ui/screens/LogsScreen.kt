@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -34,9 +37,22 @@ class LogsScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { LogsScreenModel() }
+        val lifecycleOwner = LocalLifecycleOwner.current
         val state by screenModel.state.collectAsState()
         var selectedFilter by remember { mutableStateOf("All") }
         val filters = listOf("All", "Override", "Created", "Score", "Completed")
+
+        DisposableEffect(lifecycleOwner, screenModel) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    screenModel.refresh()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
 
         Scaffold(
             topBar = {
@@ -94,12 +110,12 @@ class LogsScreen : Screen {
                                     items(logs, key = { it.id }) { log ->
                                         LogCard(log)
                                     }
-                                    item { DisclaimerText() }
                                 }
                             }
                         }
                     }
                 }
+                DisclaimerText()
             }
         }
     }

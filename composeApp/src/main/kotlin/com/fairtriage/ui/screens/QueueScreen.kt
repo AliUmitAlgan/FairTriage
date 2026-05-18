@@ -154,7 +154,7 @@ class QueueScreen : Screen {
 private fun QueueStatusBanner(patients: List<Patient>) {
     val criticalCount = patients.count { it.triage_level.equals("Critical", ignoreCase = true) }
     val urgentCount = patients.count { it.triage_level.equals("Urgent", ignoreCase = true) }
-    val maxWaitCount = patients.count { (it.waiting_time_factor ?: 0.0) >= 20.0 }
+    val maxWaitCount = patients.count { hasMaxWaitingAlert(it) }
     val message: String
     val accent: Color
     val background: Color
@@ -206,5 +206,14 @@ private fun QueueStatusBanner(patients: List<Patient>) {
             style = FairTypography.LabelSmall.copy(fontWeight = FontWeight.Medium),
             color = if (maxWaitCount > 0 && criticalCount == 0) FairColors.WarningText else Color.White
         )
+    }
+}
+
+private fun hasMaxWaitingAlert(patient: Patient): Boolean {
+    val waitFactor = patient.waiting_time_factor ?: 0.0
+    return when (patient.triage_level) {
+        "Urgent" -> waitFactor >= 13.5
+        "Stable" -> waitFactor >= 20.0
+        else -> false
     }
 }

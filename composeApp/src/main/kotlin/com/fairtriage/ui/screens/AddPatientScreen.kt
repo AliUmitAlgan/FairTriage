@@ -253,7 +253,7 @@ class AddPatientScreen : Screen {
                             val sys = sysBPStr.toIntOrNull()
                             val sysError = showErrors && (sys == null || sys !in 50..250)
                             val dia = diaBPStr.toIntOrNull()
-                            val diaError = showErrors && dia == null
+                            val diaError = showErrors && (dia == null || dia !in 30..180)
                             val sysStatus = systolicStatus(sys)
                             val diaStatus = diastolicStatus(dia)
                             OutlinedTextField(
@@ -268,7 +268,7 @@ class AddPatientScreen : Screen {
 
                             OutlinedTextField(
                                 value = diaBPStr, onValueChange = { diaBPStr = it },
-                                label = { Text("Diastolic BP") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                label = { Text("Diastolic BP (30-180)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f), isError = diaError, shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = if (diaError) FairColors.DangerRed else diaStatus.color,
@@ -286,8 +286,8 @@ class AddPatientScreen : Screen {
                         if (showErrors && (sys == null || sys !in 50..250)) {
                             Text("Systolic BP must be between 50 and 250", color = FairColors.DangerRed, fontSize = 12.sp)
                         }
-                        if (showErrors && dia == null) {
-                            Text("Diastolic BP is required", color = FairColors.DangerRed, fontSize = 12.sp)
+                        if (showErrors && (dia == null || dia !in 30..180)) {
+                            Text("Diastolic BP must be between 30 and 180", color = FairColors.DangerRed, fontSize = 12.sp)
                         }
                     }
                 }
@@ -397,6 +397,7 @@ class AddPatientScreen : Screen {
                             val sys = sysBPStr.toIntOrNull() ?: return@Button
                             if (sys !in 50..250) return@Button
                             val dia = diaBPStr.toIntOrNull() ?: return@Button
+                            if (dia !in 30..180) return@Button
                             if (fullName.isBlank()) return@Button
                             if (selectedSymptoms.isEmpty()) return@Button
                             if (hasChronic && selectedChronicConditions.isEmpty() && chronicNote.isBlank()) return@Button

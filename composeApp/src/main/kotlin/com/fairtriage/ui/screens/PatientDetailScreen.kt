@@ -37,6 +37,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,6 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -76,12 +80,22 @@ data class PatientDetailScreen(private val patientId: Int) : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { PatientDetailScreenModel() }
+        val lifecycleOwner = LocalLifecycleOwner.current
         val state by screenModel.state.collectAsState()
         val actionState by screenModel.actionState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        LaunchedEffect(patientId) {
+        DisposableEffect(lifecycleOwner, patientId, screenModel) {
             screenModel.load(patientId)
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    screenModel.load(patientId)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
         }
 
         LaunchedEffect(actionState) {
@@ -418,7 +432,7 @@ private fun buildExplanationBullets(patient: Patient): List<String> {
 
     val waitFactor = patient.waiting_time_factor ?: 0.0
     when {
-        waitFactor >= 20.0 -> bullets += "Maximum waiting-time factor is reached, so fairness review boost is active in queue sorting."
+        hasMaxWaitingAlert(patient) -> bullets += "Maximum waiting-time constraint is active, so fairness boost is applied within this triage group."
         waitFactor > 0.0 -> bullets += "Waiting time added ${formatWaitFactor(waitFactor)} to prevent unfair delay."
     }
 
@@ -427,6 +441,15 @@ private fun buildExplanationBullets(patient: Patient): List<String> {
     }
 
     return bullets.take(7)
+}
+
+private fun hasMaxWaitingAlert(patient: Patient): Boolean {
+    val waitFactor = patient.waiting_time_factor ?: 0.0
+    return when (patient.triage_level) {
+        "Urgent" -> waitFactor >= 13.5
+        "Stable" -> waitFactor >= 20.0
+        else -> false
+    }
 }
 
 @Composable
