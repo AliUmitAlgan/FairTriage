@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -70,10 +71,24 @@ fun PatientQueueCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Wait factor ${formatWaitFactor(patient.waiting_time_factor)} - Status ${patient.status}",
+                        text = "Wait ${formatMinutes(patient.waiting_minutes)} - Factor ${formatWaitFactor(patient.waiting_time_factor)} - ${patient.status}",
                         style = FairTypography.Caption,
                         color = FairColors.TextHint
                     )
+                    if (patient.max_waiting_exceeded) {
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(FairColors.WarningBg, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "Max-waiting fairness review active",
+                                style = FairTypography.Caption,
+                                color = FairColors.WarningText
+                            )
+                        }
+                    }
                 }
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
@@ -84,6 +99,11 @@ fun PatientQueueCard(
             }
         }
     }
+}
+
+private fun formatMinutes(value: Double?): String {
+    if (value == null) return "-- min"
+    return "${value.toInt()} min"
 }
 
 @Composable

@@ -210,10 +210,5 @@ private fun QueueStatusBanner(patients: List<Patient>) {
 }
 
 private fun hasMaxWaitingAlert(patient: Patient): Boolean {
-    val waitFactor = patient.waiting_time_factor ?: 0.0
-    return when (patient.triage_level) {
-        "Urgent" -> waitFactor >= 13.5
-        "Stable" -> waitFactor >= 20.0
-        else -> false
-    }
+    return patient.max_waiting_exceeded
 }

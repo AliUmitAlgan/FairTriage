@@ -181,6 +181,13 @@ private fun PatientDetailContent(
                     modifier = Modifier.padding(top = 5.dp),
                     textAlign = TextAlign.Center
                 )
+                Text(
+                    text = "Waiting ${formatMinutes(patient.waiting_minutes)}" + (patient.max_waiting_minutes?.let { " / max ${it} min" } ?: ""),
+                    style = FairTypography.LabelSmall,
+                    color = if (patient.max_waiting_exceeded) FairColors.WarningBorder else Color(0x7394D2EC),
+                    modifier = Modifier.padding(top = 4.dp),
+                    textAlign = TextAlign.Center
+                )
 
                 if (patient.overridden_by_doctor) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -377,7 +384,7 @@ private fun ProductLogicCard(patient: Patient) {
         SoftDivider()
         ProductLogicRow("Safety rules", "Critical indicators can only escalate priority, never downgrade it")
         SoftDivider()
-        ProductLogicRow("Fairness", "Waiting time increases final priority and activates a max-waiting review boost")
+        ProductLogicRow("Fairness", patient.queue_policy_summary ?: "Waiting time increases final priority and activates a max-waiting review boost")
         SoftDivider()
         ProductLogicRow("Doctor control", if (patient.overridden_by_doctor) "Doctor override is active and logged" else "Doctor can override with a required clinical reason")
     }
@@ -432,7 +439,7 @@ private fun buildExplanationBullets(patient: Patient): List<String> {
 
     val waitFactor = patient.waiting_time_factor ?: 0.0
     when {
-        hasMaxWaitingAlert(patient) -> bullets += "Maximum waiting-time constraint is active, so fairness boost is applied within this triage group."
+        patient.max_waiting_exceeded -> bullets += "Maximum waiting-time constraint is active, so fairness boost is applied within this triage group."
         waitFactor > 0.0 -> bullets += "Waiting time added ${formatWaitFactor(waitFactor)} to prevent unfair delay."
     }
 
@@ -443,13 +450,9 @@ private fun buildExplanationBullets(patient: Patient): List<String> {
     return bullets.take(7)
 }
 
-private fun hasMaxWaitingAlert(patient: Patient): Boolean {
-    val waitFactor = patient.waiting_time_factor ?: 0.0
-    return when (patient.triage_level) {
-        "Urgent" -> waitFactor >= 13.5
-        "Stable" -> waitFactor >= 20.0
-        else -> false
-    }
+private fun formatMinutes(value: Double?): String {
+    if (value == null) return "-- min"
+    return "${value.toInt()} min"
 }
 
 @Composable

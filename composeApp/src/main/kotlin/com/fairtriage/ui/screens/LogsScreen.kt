@@ -40,7 +40,7 @@ class LogsScreen : Screen {
         val lifecycleOwner = LocalLifecycleOwner.current
         val state by screenModel.state.collectAsState()
         var selectedFilter by remember { mutableStateOf("All") }
-        val filters = listOf("All", "Override", "Created", "Score", "Completed")
+        val filters = listOf("All", "Override", "Created", "Score", "Queue", "Completed")
 
         DisposableEffect(lifecycleOwner, screenModel) {
             val observer = LifecycleEventObserver { _, event ->
@@ -122,6 +122,7 @@ class LogsScreen : Screen {
 
     @Composable
     private fun LogCard(log: DecisionLog) {
+        var expanded by remember { mutableStateOf(false) }
         val (chipBg, chipText) = when (log.action_type) {
             "doctor_override" -> FairColors.PurpleBg to FairColors.PurpleBadge
             "created" -> FairColors.InfoBlueBg to FairColors.InfoBlueText
@@ -164,8 +165,17 @@ class LogsScreen : Screen {
                     color = Color(0xFF475569),
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
-                    maxLines = 2
+                    maxLines = if (expanded) Int.MAX_VALUE else 2
                 )
+                if (log.explanation.length > 90) {
+                    Text(
+                        text = if (expanded) "Show less" else "Show more",
+                        color = FairColors.InfoBlueText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 5.dp).clickable { expanded = !expanded }
+                    )
+                }
 
                 // TIMESTAMP
                 Text(

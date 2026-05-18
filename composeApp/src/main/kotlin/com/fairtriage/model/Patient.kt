@@ -8,6 +8,7 @@ data class Patient(
     val full_name: String,
     val age: Int,
     val gender: String,
+    val arrival_time: String? = null,
     val symptoms_description: String,
     val pain_level: Int,
     val fever: Boolean,
@@ -27,5 +28,11 @@ data class Patient(
     val decision_rationale: String? = null,
     val status: String,
     val overridden_by_doctor: Boolean = false,
-    val doctor_override_reason: String? = null
+    val doctor_override_reason: String? = null,
+    val created_at: String? = null,
+    val updated_at: String? = null,
+    val waiting_minutes: Double? = null,
+    val max_waiting_minutes: Int? = null,
+    val max_waiting_exceeded: Boolean = false,
+    val queue_policy_summary: String? = null
 )
