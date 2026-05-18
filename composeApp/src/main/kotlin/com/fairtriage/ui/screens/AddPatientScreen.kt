@@ -95,6 +95,19 @@ data class AddPatientScreen(
                     )
                 ),
                 ClinicalOptionGroup(
+                    title = "Cardiovascular & circulation",
+                    options = listOf(
+                        "Crushing chest pressure",
+                        "Radiating chest pain",
+                        "Syncope after exertion",
+                        "Severe hypertension symptoms",
+                        "Cold clammy skin",
+                        "Leg swelling with breathlessness",
+                        "Calf pain with swelling",
+                        "Pacemaker or ICD symptom"
+                    )
+                ),
+                ClinicalOptionGroup(
                     title = "Pain & trauma",
                     options = listOf(
                         "Chest pain",
@@ -107,6 +120,19 @@ data class AddPatientScreen(
                         "Head injury",
                         "Fracture or deformity",
                         "Burn injury"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Wounds / burns / skin integrity",
+                    options = listOf(
+                        "Deep wound",
+                        "Infected wound",
+                        "Abscess",
+                        "Cellulitis spreading",
+                        "Pressure sore",
+                        "Large burn area",
+                        "Electrical burn",
+                        "Frostbite"
                     )
                 ),
                 ClinicalOptionGroup(
@@ -124,6 +150,19 @@ data class AddPatientScreen(
                     )
                 ),
                 ClinicalOptionGroup(
+                    title = "ENT / eye / dental",
+                    options = listOf(
+                        "Sudden vision loss",
+                        "Eye trauma",
+                        "Chemical eye exposure",
+                        "Severe eye pain",
+                        "Severe nosebleed",
+                        "Ear pain",
+                        "Dental abscess",
+                        "Facial swelling"
+                    )
+                ),
+                ClinicalOptionGroup(
                     title = "Neurologic & cardiac",
                     options = listOf(
                         "Confusion",
@@ -135,6 +174,19 @@ data class AddPatientScreen(
                         "Vision changes",
                         "Palpitations",
                         "Irregular heartbeat"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Mental health & safety",
+                    options = listOf(
+                        "Suicidal thoughts",
+                        "Self-harm injury",
+                        "Violent or unsafe behavior",
+                        "Acute psychosis",
+                        "Panic attack",
+                        "Severe insomnia with distress",
+                        "Substance withdrawal",
+                        "Social safety concern"
                     )
                 ),
                 ClinicalOptionGroup(
@@ -151,6 +203,19 @@ data class AddPatientScreen(
                     )
                 ),
                 ClinicalOptionGroup(
+                    title = "Urologic / reproductive",
+                    options = listOf(
+                        "Urinary retention",
+                        "Testicular pain",
+                        "Pelvic pain",
+                        "Vaginal bleeding",
+                        "Severe menstrual bleeding",
+                        "Sexual assault concern",
+                        "Postpartum bleeding",
+                        "Reduced fetal movement"
+                    )
+                ),
+                ClinicalOptionGroup(
                     title = "Allergy / toxicology / exposure",
                     options = listOf(
                         "Anaphylaxis concern",
@@ -162,6 +227,19 @@ data class AddPatientScreen(
                     )
                 ),
                 ClinicalOptionGroup(
+                    title = "Environmental / disaster exposure",
+                    options = listOf(
+                        "Smoke inhalation",
+                        "Heat stroke concern",
+                        "Hypothermia concern",
+                        "Drowning or submersion",
+                        "Carbon monoxide exposure",
+                        "Crush injury",
+                        "Blast injury",
+                        "Needs decontamination"
+                    )
+                ),
+                ClinicalOptionGroup(
                     title = "Pregnancy / pediatric risk",
                     options = listOf(
                         "Pregnancy with bleeding",
@@ -170,6 +248,17 @@ data class AddPatientScreen(
                         "Child with poor intake",
                         "Child with persistent fever",
                         "Child with lethargy"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Functional / frailty concerns",
+                    options = listOf(
+                        "Fall in older adult",
+                        "Unable to perform daily activities",
+                        "New confusion in older adult",
+                        "Poor oral intake",
+                        "Caregiver concern",
+                        "Unsafe discharge risk"
                     )
                 ),
                 ClinicalOptionGroup(
@@ -204,43 +293,98 @@ data class AddPatientScreen(
         val chronicGroups = remember {
             listOf(
                 ClinicalOptionGroup(
-                    title = "High-risk chronic disease",
+                    title = "Cardiac / vascular history",
                     options = listOf(
                         "Heart disease",
-                        "Kidney disease",
-                        "Cancer treatment",
-                        "Immunosuppressed",
-                        "Pregnancy risk",
-                        "Stroke history",
-                        "Seizure disorder",
-                        "Organ transplant",
-                        "Dialysis patient"
+                        "Prior heart attack",
+                        "Heart failure",
+                        "Arrhythmia history",
+                        "Pacemaker or ICD",
+                        "Valve disease",
+                        "Peripheral vascular disease",
+                        "History of blood clot"
                     )
                 ),
                 ClinicalOptionGroup(
-                    title = "Moderate-risk condition",
+                    title = "Neurologic / respiratory history",
+                    options = listOf(
+                        "Stroke history",
+                        "Seizure disorder",
+                        "Neurologic disease",
+                        "Dementia or cognitive impairment",
+                        "Asthma or COPD",
+                        "Home oxygen use",
+                        "Sleep apnea",
+                        "Cystic fibrosis"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Renal / cancer / immune risk",
+                    options = listOf(
+                        "Kidney disease",
+                        "Dialysis patient",
+                        "Cancer treatment",
+                        "Immunosuppressed",
+                        "Organ transplant",
+                        "HIV or AIDS",
+                        "Long-term steroid use",
+                        "Autoimmune disease"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Metabolic / endocrine / liver",
                     options = listOf(
                         "Diabetes",
+                        "Insulin-dependent diabetes",
                         "Hypertension",
-                        "Asthma or COPD",
-                        "Neurologic disease",
                         "Liver disease",
-                        "Psychiatric history",
+                        "Cirrhosis",
+                        "Adrenal insufficiency",
+                        "Thyroid disease",
+                        "Severe obesity",
+                        "Malnutrition risk"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Bleeding / medication risk",
+                    options = listOf(
+                        "Uses blood thinners",
+                        "Bleeding disorder",
+                        "Sickle cell disease",
+                        "Severe anemia history",
+                        "Medication allergy",
+                        "High-risk medication use",
+                        "Recent medication change",
+                        "No regular medication access"
+                    )
+                ),
+                ClinicalOptionGroup(
+                    title = "Pregnancy / age / functional risk",
+                    options = listOf(
+                        "Pregnancy risk",
+                        "Postpartum under 6 weeks",
+                        "Older adult frailty",
                         "Mobility limitation",
-                        "Older adult frailty"
+                        "Nursing home resident",
+                        "Lives alone with limited support",
+                        "Pediatric chronic illness",
+                        "Developmental disability"
                     )
                 ),
                 ClinicalOptionGroup(
                     title = "Ongoing care context",
                     options = listOf(
-                        "Uses blood thinners",
                         "Recent surgery",
                         "Frequent ED visits",
-                        "Medication allergy",
                         "Recent hospitalization",
                         "Indwelling catheter",
+                        "Central line or port",
+                        "Feeding tube",
+                        "Ventricular shunt",
+                        "Recent chemotherapy",
+                        "Recent trauma admission",
                         "Known infectious exposure",
-                        "No regular medication access"
+                        "Homelessness or housing insecurity"
                     )
                 )
             )
@@ -793,6 +937,9 @@ data class AddPatientScreen(
     private fun isHighRiskChronicCondition(option: String): Boolean {
         return option in setOf(
             "Heart disease",
+            "Prior heart attack",
+            "Heart failure",
+            "History of blood clot",
             "Kidney disease",
             "Cancer treatment",
             "Immunosuppressed",
@@ -800,7 +947,17 @@ data class AddPatientScreen(
             "Stroke history",
             "Seizure disorder",
             "Organ transplant",
-            "Dialysis patient"
+            "Dialysis patient",
+            "Home oxygen use",
+            "HIV or AIDS",
+            "Long-term steroid use",
+            "Insulin-dependent diabetes",
+            "Bleeding disorder",
+            "Sickle cell disease",
+            "Postpartum under 6 weeks",
+            "Central line or port",
+            "Ventricular shunt",
+            "Recent chemotherapy"
         )
     }
 
@@ -979,7 +1136,16 @@ data class AddPatientScreen(
         VitalOption("Very low", "<50 mmHg", 45, FairColors.CriticalFill, FairColors.CriticalTint)
     )
 
-    private fun clinicalFindingColor(option: String): Color = when (option.lowercase()) {
+    private fun clinicalFindingColor(option: String): Color {
+        val normalized = option.lowercase()
+        return when {
+            normalized in criticalClinicalFindings() -> FairColors.CriticalFill
+            normalized in urgentClinicalFindings() -> FairColors.UrgentFill
+            else -> FairColors.StableFill
+        }
+    }
+
+    private fun criticalClinicalFindings(): Set<String> = setOf(
         "unconscious or unresponsive",
         "reduced consciousness",
         "airway obstruction",
@@ -988,6 +1154,9 @@ data class AddPatientScreen(
         "signs of shock",
         "severe active bleeding",
         "cardiac arrest concern",
+        "crushing chest pressure",
+        "radiating chest pain",
+        "cold clammy skin",
         "chest pain",
         "shortness of breath",
         "confusion",
@@ -995,23 +1164,53 @@ data class AddPatientScreen(
         "weakness or numbness",
         "facial droop or speech difficulty",
         "severe sudden headache",
+        "sudden vision loss",
+        "chemical eye exposure",
         "bleeding",
         "blood in vomit or stool",
         "severe abdominal guarding",
         "anaphylaxis concern",
         "poisoning or overdose",
         "pregnancy with bleeding",
+        "postpartum bleeding",
         "child with lethargy",
         "severe localized pain",
-        "worsening symptoms" -> FairColors.CriticalFill
+        "suicidal thoughts",
+        "self-harm injury",
+        "violent or unsafe behavior",
+        "smoke inhalation",
+        "heat stroke concern",
+        "hypothermia concern",
+        "drowning or submersion",
+        "carbon monoxide exposure",
+        "crush injury",
+        "blast injury",
+        "needs decontamination",
+        "worsening symptoms"
+    )
+
+    private fun urgentClinicalFindings(): Set<String> = setOf(
         "abdominal pain",
         "headache",
         "trauma or injury",
         "head injury",
         "fracture or deformity",
         "burn injury",
+        "deep wound",
+        "infected wound",
+        "abscess",
+        "cellulitis spreading",
+        "pressure sore",
+        "large burn area",
+        "electrical burn",
+        "frostbite",
         "arm or leg pain",
         "back pain",
+        "syncope after exertion",
+        "severe hypertension symptoms",
+        "leg swelling with breathlessness",
+        "calf pain with swelling",
+        "pacemaker or icd symptom",
         "fever or chills",
         "cough",
         "wheezing or asthma attack",
@@ -1021,13 +1220,31 @@ data class AddPatientScreen(
         "persistent vomiting",
         "diarrhea",
         "rash or swelling",
+        "eye trauma",
+        "severe eye pain",
+        "severe nosebleed",
+        "ear pain",
+        "dental abscess",
+        "facial swelling",
         "dizziness or fainting",
         "vision changes",
         "palpitations",
         "irregular heartbeat",
+        "acute psychosis",
+        "panic attack",
+        "severe insomnia with distress",
+        "substance withdrawal",
+        "social safety concern",
         "dehydration",
         "flank pain",
         "urinary pain",
+        "urinary retention",
+        "testicular pain",
+        "pelvic pain",
+        "vaginal bleeding",
+        "severe menstrual bleeding",
+        "sexual assault concern",
+        "reduced fetal movement",
         "medication reaction",
         "chemical exposure",
         "animal or insect bite",
@@ -1036,23 +1253,18 @@ data class AddPatientScreen(
         "newborn or infant concern",
         "child with poor intake",
         "child with persistent fever",
+        "fall in older adult",
+        "unable to perform daily activities",
+        "new confusion in older adult",
+        "poor oral intake",
+        "caregiver concern",
+        "unsafe discharge risk",
         "severe fatigue",
         "unable to walk",
         "severe anxiety or agitation",
         "needs isolation",
-        "other clinical concern" -> FairColors.UrgentFill
-        "mild arm pain",
-        "mild back pain",
-        "mild sore throat",
-        "mild cough",
-        "mild headache",
-        "minor cut or abrasion",
-        "mild skin irritation",
-        "medication refill concern",
-        "routine wound check",
-        "stable chronic complaint" -> FairColors.StableFill
-        else -> FairColors.StableFill
-    }
+        "other clinical concern"
+    )
 
     private fun clinicalFindingTint(option: String): Color = when (clinicalFindingColor(option)) {
         FairColors.CriticalFill -> FairColors.CriticalTint
