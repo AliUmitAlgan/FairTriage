@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.fairtriage.core.LocalTriageCache
 import com.fairtriage.ui.components.DisclaimerText
 import com.fairtriage.ui.components.FairColors
 import com.fairtriage.ui.components.FairTypography
@@ -38,9 +39,11 @@ class LoginScreen : Screen {
         var email by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var passwordVisible by remember { mutableStateOf(false) }
+        var privacyConsent by remember { mutableStateOf(LocalTriageCache.hasPrivacyConsent()) }
         var showErrors by remember { mutableStateOf(false) }
         val emailError = showErrors && email.isBlank()
         val passwordError = showErrors && password.isBlank()
+        val consentError = showErrors && !privacyConsent
 
         Column(modifier = Modifier.fillMaxSize().background(FairColors.NavyDark)) {
             // TOP SECTION
@@ -162,10 +165,40 @@ class LoginScreen : Screen {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (consentError) FairColors.CriticalTint else FairColors.ScreenBg, RoundedCornerShape(12.dp))
+                            .border(1.dp, if (consentError) FairColors.DangerRed else FairColors.Border, RoundedCornerShape(12.dp))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Checkbox(
+                            checked = privacyConsent,
+                            onCheckedChange = {
+                                privacyConsent = it
+                                LocalTriageCache.setPrivacyConsent(it)
+                            },
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "I confirm explicit prototype data consent and understand this tool is decision-support only.",
+                            style = FairTypography.LabelSmall,
+                            color = if (consentError) FairColors.DangerRed else FairColors.TextSecondary,
+                            lineHeight = 15.sp
+                        )
+                    }
+                    if (consentError) {
+                        Text("Consent is required for privacy-aware prototype access", color = FairColors.DangerRed, fontSize = 11.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Button(
                         onClick = {
                             showErrors = true
-                            if (email.isNotBlank() && password.isNotBlank()) {
+                            if (email.isNotBlank() && password.isNotBlank() && privacyConsent) {
                                 navigator.replace(DashboardScreen())
                             }
                         },

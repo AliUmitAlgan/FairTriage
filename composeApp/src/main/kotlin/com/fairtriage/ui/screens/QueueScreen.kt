@@ -41,6 +41,7 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.fairtriage.core.LocalTriageCache
 import com.fairtriage.core.ScreenState
 import com.fairtriage.model.Patient
 import com.fairtriage.screenmodel.QueueScreenModel
@@ -114,6 +115,22 @@ class QueueScreen : Screen {
                                 contentPadding = PaddingValues(top = 12.dp, bottom = 12.dp)
                             ) {
                                 item {
+                                    val pending = LocalTriageCache.pendingCreateCount()
+                                    if (pending > 0) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(FairColors.WarningBg, RoundedCornerShape(10.dp))
+                                                .border(1.dp, Color(0x66F9A825), RoundedCornerShape(10.dp))
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.Warning, contentDescription = null, tint = FairColors.WarningBorder, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("$pending offline patient record(s) pending backend sync", style = FairTypography.LabelSmall, color = FairColors.WarningText)
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,

@@ -2,6 +2,7 @@ package com.fairtriage.repository
 
 import com.fairtriage.core.ApiClient
 import com.fairtriage.core.BASE_URL
+import com.fairtriage.core.LocalTriageCache
 import com.fairtriage.model.CreatePatientRequest
 import com.fairtriage.model.OverrideRequest
 import com.fairtriage.model.Patient
@@ -22,16 +23,37 @@ class KtorPatientRepository : PatientRepository {
     private val client = ApiClient.httpClient
 
     override suspend fun getPatients(): List<Patient> = apiCall("Load patients") {
-        client.get("$BASE_URL/patients").body()
+        syncPendingCreates()
+        runCatching {
+            client.get("$BASE_URL/patients").body<List<Patient>>()
+        }.onSuccess { patients ->
+            LocalTriageCache.cachePatients(patients)
+        }.getOrElse { error ->
+            val cached = LocalTriageCache.cachedPatients()
+            if (cached.isNotEmpty()) cached else throw error
+        }
     }
 
     override suspend fun getPatient(patientId: Int): Patient = apiCall("Load patient") {
-        client.get("$BASE_URL/patients/$patientId").body()
+        runCatching {
+            client.get("$BASE_URL/patients/$patientId").body<Patient>()
+        }.onSuccess { patient ->
+            val updated = (LocalTriageCache.cachedPatients().filterNot { it.id == patient.id } + patient)
+            LocalTriageCache.cachePatients(updated)
+        }.getOrElse { error ->
+            LocalTriageCache.cachedPatients().firstOrNull { it.id == patientId }
+                ?: LocalTriageCache.cachedQueue().firstOrNull { it.id == patientId }
+                ?: throw error
+        }
     }
 
     override suspend fun createPatient(request: CreatePatientRequest): Unit = apiCall("Create patient") {
-        client.post("$BASE_URL/patients") {
-            setBody(request)
+        runCatching {
+            client.post("$BASE_URL/patients") {
+                setBody(request)
+            }
+        }.onFailure {
+            LocalTriageCache.addPendingCreate(request)
         }
         Unit
     }
@@ -46,5 +68,21 @@ class KtorPatientRepository : PatientRepository {
             setBody(request)
         }
         Unit
+    }
+
+    private suspend fun syncPendingCreates() {
+        val pending = LocalTriageCache.pendingCreates()
+        if (pending.isEmpty()) return
+
+        val remaining = mutableListOf<CreatePatientRequest>()
+        pending.forEach { request ->
+            val synced = runCatching {
+                client.post("$BASE_URL/patients") {
+                    setBody(request)
+                }
+            }.isSuccess
+            if (!synced) remaining += request
+        }
+        LocalTriageCache.replacePendingCreates(remaining)
     }
 }

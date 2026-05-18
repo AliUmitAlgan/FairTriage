@@ -25,6 +25,7 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.fairtriage.core.LocalTriageCache
 import com.fairtriage.core.ScreenState
 import com.fairtriage.model.Patient
 import com.fairtriage.screenmodel.DashboardScreenModel
@@ -97,7 +98,9 @@ class DashboardScreen : Screen {
                             Column {
                                 Text("Emergency department overview", style = FairTypography.BodyLarge.copy(fontWeight = FontWeight.Medium), color = FairColors.NavyText)
                                 val patientCount = if (state is ScreenState.Success) (state as ScreenState.Success).data.size else 0
-                                Text("$patientCount patients - last sync just now", style = FairTypography.LabelSmall, color = Color(0x8094D2EC))
+                                val pending = LocalTriageCache.pendingCreateCount()
+                                val syncText = if (pending > 0) "$pending pending offline sync" else "live sync ready"
+                                Text("$patientCount patients - $syncText", style = FairTypography.LabelSmall, color = Color(0x8094D2EC))
                             }
                             Box(modifier = Modifier.size(10.dp).background(FairColors.SuccessGreen, CircleShape))
                         }
