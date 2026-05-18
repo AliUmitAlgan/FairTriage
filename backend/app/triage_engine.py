@@ -6,6 +6,8 @@ from typing import Any
 
 TRIAGE_RANK = {"Critical": 0, "Urgent": 1, "Stable": 2}
 MAX_WAITING_MINUTES = {"Urgent": 90, "Stable": 180}
+URGENT_RISK_FLOOR = 45.0
+CRITICAL_RISK_FLOOR = 75.0
 HIGH_RISK_SYMPTOM_KEYWORDS = {
     "unconscious or unresponsive": 35,
     "reduced consciousness": 30,
@@ -328,6 +330,36 @@ def calculate_clinical_risk_score(
     return _round_score(clinical_risk_score)
 
 
+def safety_risk_floor(patient: Any) -> float:
+    """Return the minimum clinical risk implied by safety-first triage rules.
+
+    The weighted formula remains the baseline model, but obvious red/yellow
+    triage findings must also be visible in the numeric clinical risk score.
+    Otherwise a patient can correctly become Critical by safety rule while the
+    displayed clinical risk still looks deceptively low.
+    """
+    symptoms_description = _read(patient, "symptoms_description")
+    floor = 0.0
+
+    if _read(patient, "heart_rate") > 130:
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+    if _read(patient, "blood_pressure_systolic") < 90:
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+    if _contains_any(symptoms_description, CRITICAL_SYMPTOM_KEYWORDS):
+        floor = max(floor, CRITICAL_RISK_FLOOR)
+
+    if _read(patient, "pain_level") >= 9 and _read(patient, "fever"):
+        floor = max(floor, URGENT_RISK_FLOOR)
+    if _contains_any(symptoms_description, URGENT_SYMPTOM_KEYWORDS):
+        floor = max(floor, URGENT_RISK_FLOOR)
+    if _contains_any(symptoms_description, ("chest pain",)) and (
+        _read(patient, "heart_rate") > 100 or _read(patient, "pain_level") >= 7
+    ):
+        floor = max(floor, URGENT_RISK_FLOOR)
+
+    return floor
+
+
 def calculate_waiting_time_factor(
     arrival_time: datetime,
     now_utc: datetime | None = None,
@@ -499,6 +531,7 @@ def calculate_patient_scores(
         image_score=_read(patient, "image_score"),
         history_score=history_score,
     )
+    clinical_risk_score = _round_score(max(clinical_risk_score, safety_risk_floor(patient)))
     waiting_time_factor, waiting_minutes = calculate_waiting_time_factor(
         _read(patient, "arrival_time"),
         now_utc,
