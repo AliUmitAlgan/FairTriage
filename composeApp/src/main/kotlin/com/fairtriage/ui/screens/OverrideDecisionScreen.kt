@@ -41,16 +41,47 @@ data class OverrideDecisionScreen(
         var selectedLevel by remember { mutableStateOf(currentTriageLevel.ifBlank { "Stable" }) }
         var selectedReasons by remember { mutableStateOf(setOf<String>()) }
         var showErrors by remember { mutableStateOf(false) }
-        val reasonOptions = listOf(
-            "Pain level increased or uncontrolled",
-            "Fever or infection concern",
-            "Abnormal heart rate",
-            "Abnormal blood pressure",
-            "Chronic disease increases risk",
-            "Symptoms suggest clinical deterioration",
-            "Waiting time increases urgency",
-            "Clinical judgement after in-person assessment"
-        )
+        val reasonGroups = remember {
+            listOf(
+                OverrideReasonGroup(
+                    title = "Immediate clinical concern",
+                    options = listOf(
+                        "Severe pain escalation",
+                        "Chest pain or cardiac concern",
+                        "Respiratory distress concern",
+                        "Neurologic red flag",
+                        "Clinical deterioration observed"
+                    )
+                ),
+                OverrideReasonGroup(
+                    title = "Abnormal measurements",
+                    options = listOf(
+                        "Abnormal heart rate",
+                        "Abnormal blood pressure",
+                        "Persistent fever or infection concern",
+                        "Pain level increased or uncontrolled"
+                    )
+                ),
+                OverrideReasonGroup(
+                    title = "Risk context",
+                    options = listOf(
+                        "High-risk chronic disease",
+                        "Age-related frailty risk",
+                        "Waiting time increases urgency",
+                        "AI score underestimates bedside risk"
+                    )
+                ),
+                OverrideReasonGroup(
+                    title = "Clinical judgement",
+                    options = listOf(
+                        "Doctor or nurse bedside assessment",
+                        "Patient safety precaution",
+                        "Symptoms suggest clinical deterioration",
+                        "Requires faster physician review"
+                    )
+                )
+            )
+        }
 
         LaunchedEffect(actionState) {
             when (val currentAction = actionState) {
@@ -120,21 +151,36 @@ data class OverrideDecisionScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Select clinical reason(s)", style = FairTypography.LabelLarge, color = Color(0xFF64748B))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Select clinical reason(s)", style = FairTypography.LabelLarge, color = Color(0xFF64748B))
+                    Text("${selectedReasons.size} selected", style = FairTypography.LabelSmall, color = FairColors.TextHint)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                reasonOptions.forEach { option ->
-                    ReasonOptionCard(
-                        text = option,
-                        selected = option in selectedReasons,
-                        onClick = {
-                            selectedReasons = if (option in selectedReasons) {
-                                selectedReasons - option
-                            } else {
-                                selectedReasons + option
-                            }
-                        }
+                reasonGroups.forEach { group ->
+                    Text(
+                        text = group.title,
+                        style = FairTypography.LabelLarge,
+                        color = FairColors.InfoBlueDark,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    group.options.forEach { option ->
+                        ReasonOptionCard(
+                            text = option,
+                            selected = option in selectedReasons,
+                            onClick = {
+                                selectedReasons = if (option in selectedReasons) {
+                                    selectedReasons - option
+                                } else {
+                                    selectedReasons + option
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
                 val isReasonError = showErrors && selectedReasons.isEmpty()
                 if (isReasonError) {
@@ -148,7 +194,7 @@ data class OverrideDecisionScreen(
                     onClick = {
                         showErrors = true
                         if (isConfirmEnabled) {
-                            val reasons = selectedReasons.toList()
+                            val reasons = reasonGroups.flatMap { it.options }.filter { it in selectedReasons }
                             screenModel.submit(
                                 patientId,
                                 com.fairtriage.model.OverrideRequest(
@@ -177,6 +223,11 @@ data class OverrideDecisionScreen(
             }
         }
     }
+
+    private data class OverrideReasonGroup(
+        val title: String,
+        val options: List<String>
+    )
 
     @Composable
     private fun LevelSelectorCard(level: String, selectedLevel: String, fillColor: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {

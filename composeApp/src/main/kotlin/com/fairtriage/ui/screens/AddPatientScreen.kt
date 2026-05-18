@@ -3,12 +3,14 @@ package com.fairtriage.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalHospital
@@ -44,7 +46,8 @@ class AddPatientScreen : Screen {
         var fullName by remember { mutableStateOf("") }
         var ageStr by remember { mutableStateOf("") }
         var gender by remember { mutableStateOf("Female") }
-        var symptoms by remember { mutableStateOf("") }
+        var selectedSymptoms by remember { mutableStateOf(setOf<String>()) }
+        var clinicalNote by remember { mutableStateOf("") }
         var painLevel by remember { mutableStateOf(0f) }
         var fever by remember { mutableStateOf(false) }
         var heartRateStr by remember { mutableStateOf("") }
@@ -54,6 +57,26 @@ class AddPatientScreen : Screen {
         var chronicDesc by remember { mutableStateOf("") }
         var mockImageScore by remember { mutableStateOf(0.0f) }
         var showErrors by remember { mutableStateOf(false) }
+        val symptomGroups = remember {
+            listOf(
+                ClinicalOptionGroup(
+                    title = "Pain & trauma",
+                    options = listOf("Chest pain", "Abdominal pain", "Headache", "Trauma or injury", "Severe localized pain")
+                ),
+                ClinicalOptionGroup(
+                    title = "Infection & respiratory",
+                    options = listOf("Fever or chills", "Cough", "Shortness of breath", "Nausea or vomiting", "Rash or swelling")
+                ),
+                ClinicalOptionGroup(
+                    title = "Neurologic & cardiac",
+                    options = listOf("Dizziness or fainting", "Confusion", "Weakness or numbness", "Palpitations", "Seizure concern")
+                ),
+                ClinicalOptionGroup(
+                    title = "General risk signs",
+                    options = listOf("Bleeding", "Dehydration", "Severe fatigue", "Worsening symptoms", "Other clinical concern")
+                )
+            )
+        }
 
         LaunchedEffect(actionState) {
             when (val currentAction = actionState) {
@@ -123,13 +146,40 @@ class AddPatientScreen : Screen {
                 item {
                     StandardCard {
                         SectionCardTitle("Symptoms & pain", Icons.Default.LocalHospital)
-                        val symptomsError = showErrors && symptoms.isBlank()
-                        OutlinedTextField(
-                            value = symptoms, onValueChange = { symptoms = it },
-                            label = { Text("Symptoms description") }, minLines = 3,
-                            modifier = Modifier.fillMaxWidth(), isError = symptomsError, shape = RoundedCornerShape(12.dp)
+                        Text(
+                            text = "Select one or more clinical findings",
+                            style = FairTypography.BodyMedium,
+                            color = FairColors.TextSecondary
                         )
-                        if (symptomsError) Text("Symptoms description is required", color = FairColors.DangerRed, fontSize = 12.sp)
+                        Spacer(Modifier.height(10.dp))
+                        symptomGroups.forEach { group ->
+                            ClinicalOptionSection(
+                                title = group.title,
+                                options = group.options,
+                                selectedOptions = selectedSymptoms,
+                                onToggle = { option ->
+                                    selectedSymptoms = if (option in selectedSymptoms) {
+                                        selectedSymptoms - option
+                                    } else {
+                                        selectedSymptoms + option
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        val symptomsError = showErrors && selectedSymptoms.isEmpty()
+                        if (symptomsError) {
+                            Text("Select at least one symptom or clinical finding", color = FairColors.DangerRed, fontSize = 12.sp)
+                        }
+
+                        OutlinedTextField(
+                            value = clinicalNote,
+                            onValueChange = { clinicalNote = it },
+                            label = { Text("Additional clinical note (optional)") },
+                            minLines = 2,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
 
                         Spacer(Modifier.height(16.dp))
                         val painColor = when (painLevel.toInt()) {
@@ -249,6 +299,10 @@ class AddPatientScreen : Screen {
                     Button(
                         onClick = {
                             showErrors = true
+                            val symptomText = buildList {
+                                addAll(selectedSymptoms)
+                                if (clinicalNote.isNotBlank()) add("Additional note: ${clinicalNote.trim()}")
+                            }.joinToString("; ")
                             val age = ageStr.toIntOrNull() ?: return@Button
                             if (age !in 1..120) return@Button
                             val hr = heartRateStr.toIntOrNull() ?: return@Button
@@ -257,13 +311,13 @@ class AddPatientScreen : Screen {
                             if (sys !in 50..250) return@Button
                             val dia = diaBPStr.toIntOrNull() ?: return@Button
                             if (fullName.isBlank()) return@Button
-                            if (symptoms.isBlank()) return@Button
+                            if (selectedSymptoms.isEmpty()) return@Button
                             
                             val req = CreatePatientRequest(
                                 full_name = fullName,
                                 age = age,
                                 gender = gender,
-                                symptoms_description = symptoms,
+                                symptoms_description = symptomText,
                                 pain_level = painLevel.toInt(),
                                 fever = fever,
                                 heart_rate = hr,
@@ -289,6 +343,79 @@ class AddPatientScreen : Screen {
 
                 item { DisclaimerText() }
             }
+        }
+    }
+
+    private data class ClinicalOptionGroup(
+        val title: String,
+        val options: List<String>
+    )
+
+    @Composable
+    private fun ClinicalOptionSection(
+        title: String,
+        options: List<String>,
+        selectedOptions: Set<String>,
+        onToggle: (String) -> Unit
+    ) {
+        Text(
+            text = title,
+            style = FairTypography.LabelLarge,
+            color = FairColors.InfoBlueDark,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.chunked(2).forEach { rowOptions ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    rowOptions.forEach { option ->
+                        ClinicalOptionCard(
+                            text = option,
+                            selected = option in selectedOptions,
+                            onClick = { onToggle(option) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (rowOptions.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun ClinicalOptionCard(
+        text: String,
+        selected: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        Row(
+            modifier = modifier
+                .heightIn(min = 46.dp)
+                .clickable(onClick = onClick)
+                .background(if (selected) FairColors.InfoBlueBg else Color.White, RoundedCornerShape(12.dp))
+                .border(1.dp, if (selected) FairColors.InfoBlueBorder else FairColors.Border, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(if (selected) FairColors.InfoBlueText else Color.White, RoundedCornerShape(6.dp))
+                    .border(1.dp, if (selected) FairColors.InfoBlueText else FairColors.Border, RoundedCornerShape(6.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (selected) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = text,
+                color = if (selected) FairColors.InfoBlueText else FairColors.TextPrimary,
+                style = FairTypography.BodyMedium.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
+            )
         }
     }
 }
